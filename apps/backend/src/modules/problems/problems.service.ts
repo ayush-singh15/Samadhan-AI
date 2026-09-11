@@ -1,69 +1,81 @@
-import { problemQueue } from '../../queues/problemQueue';
+import { prisma } from '../../config/db.config';
+import { ProblemCategory, ProblemStatus } from '@prisma/client';
 
 export class ProblemsService {
-  private sampleProblems = [
-    {
-      id: 'prob-101',
-      title: 'Contaminated Drinking Water Tank in Rampur Village',
-      description: 'The overhead public water tank in Ward 4 has high sediment and algae build-up, causing waterborne illnesses.',
-      category: 'WATER_SANITATION',
-      status: 'ASSIGNED_TO_UNIVERSITY',
-      latitude: 26.8467,
-      longitude: 80.9462,
-      address: 'Ward 4, Rampur Village',
-      district: 'Lucknow',
-      state: 'Uttar Pradesh',
-      mediaUrls: ['https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3'],
-      submittedById: 'usr-citizen-01',
-      assignedUniversityId: 'univ-iitk',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 'prob-102',
-      title: 'Lack of Solar Cold Storage for Perishable Produce',
-      description: 'Farmers lose 40% of tomato harvest due to lack of local grid-independent cold storage.',
-      category: 'AGRICULTURE',
-      status: 'SUBMITTED',
-      latitude: 25.3176,
-      longitude: 82.9739,
-      address: 'Kisan Mandi, Block B',
-      district: 'Varanasi',
-      state: 'Uttar Pradesh',
-      mediaUrls: ['https://images.unsplash.com/photo-1500937386664-56d1dfef3854'],
-      submittedById: 'usr-citizen-02',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ];
-
-  async getAllProblems() {
-    return this.sampleProblems;
+  async getAllProblems(filters?: { status?: string; category?: string }) {
+    return prisma.problem.findMany({
+      where: {
+        ...(filters?.status   && { status:   filters.status   as ProblemStatus }),
+        ...(filters?.category && { category: filters.category as ProblemCategory }),
+      },
+      include: {
+        submittedBy:        { select: { id: true, name: true, email: true } },
+        assignedUniversity: { select: { id: true, name: true, code: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async getProblemById(id: string) {
-    return this.sampleProblems.find((p) => p.id === id) || this.sampleProblems[0];
+    const problem = await prisma.problem.findUnique({
+      where: { id },
+      include: {
+        submittedBy:        { select: { id: true, name: true, email: true } },
+        assignedUniversity: { select: { id: true, name: true, code: true, department: true } },
+        proposals:          { include: { university: { select: { id: true, name: true } } } },
+      },
+    });
+    if (!problem) throw new Error('Problem not found');
+    return problem;
   }
 
-  async createProblem(data: any, userId: string) {
-    const newProblem = {
-      id: 'prob-' + Date.now(),
-      ...data,
-      status: 'SUBMITTED',
-      submittedById: userId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  async createProblem(data: {
+    title: string;
+    description: string;
+    category?: string;
+    latitude: number;
+    longitude: number;
+    address: string;
+    district: string;
+    state: string;
+    mediaUrls?: string[];
+  }, userId: string) {
+    return prisma.problem.create({
+      data: {
+        title:       data.title,
+        description: data.description,
+        category:    (data.category as ProblemCategory) || 'OTHER',
+        latitude:    data.latitude,
+        longitude:   data.longitude,
+        address:     data.address,
+        district:    data.district,
+        state:       data.state,
+        mediaUrls:   data.mediaUrls || [],
+        submittedById: userId,
+        status:      'SUBMITTED',
+      },
+    });
+  }
 
-    // Dispatch background job for AI categorization
-    try {
-      await problemQueue.add('categorize', { problemId: newProblem.id, title: data.title });
-    } catch (e) {
-      console.warn('Queue dispatch fallback');
-    }
+  async updateStatus(id: string, status: string) {
+    return prisma.problem.update({
+      where: { id },
+      data:  { status: status as ProblemStatus },
+    });
+  }
 
-    this.sampleProblems.unshift(newProblem);
-    return newProblem;
+  async assignUniversity(problemId: string, universityId: string) {
+    return prisma.problem.update({
+      where: { id: problemId },
+      data:  { assignedUniversityId: universityId, status: 'ASSIGNED_TO_UNIVERSITY' },
+    });
+  }
+
+  async getMyProblems(userId: string) {
+    return prisma.problem.findMany({
+      where:   { submittedById: userId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }
 

@@ -1,18 +1,14 @@
-import { Queue, Worker } from 'bullmq';
-import { env } from '../config/env.config';
+// Notification Queue — gracefully disabled if Redis is not available
+let notificationQueue: any = { add: async () => {} };
 
-const connection = {
-  host: env.REDIS_HOST,
-  port: env.REDIS_PORT,
-};
+try {
+  const { Queue } = require('bullmq');
+  const { env }   = require('../config/env.config');
+  const connection = { host: env.REDIS_HOST, port: env.REDIS_PORT };
+  notificationQueue = new Queue('notifications', { connection });
+  console.log('✅ Notification queue connected to Redis');
+} catch {
+  console.warn('⚠️  Redis not available — notification queue running in no-op mode');
+}
 
-export const notificationQueue = new Queue('notification-dispatcher', { connection });
-
-export const notificationWorker = new Worker(
-  'notification-dispatcher',
-  async (job) => {
-    console.log(`[BullMQ] Dispatching email/SMS notification to user ${job.data.userId}: ${job.data.title}`);
-    return { status: 'DISPATCHED' };
-  },
-  { connection }
-);
+export { notificationQueue };

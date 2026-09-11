@@ -1,41 +1,41 @@
-export class UniversitiesService {
-  private universities = [
-    {
-      id: 'univ-iitk',
-      name: 'Indian Institute of Technology Kanpur',
-      code: 'IITK',
-      expertiseTags: ['Water Filtration', 'Environmental Engineering', 'IoT Sensors'],
-      department: 'Civil & Environmental Engineering',
-      state: 'Uttar Pradesh',
-      contactEmail: 'innovations@iitk.ac.in',
-      assignedProblemsCount: 4,
-    },
-    {
-      id: 'univ-bhu',
-      name: 'Banaras Hindu University',
-      code: 'BHU',
-      expertiseTags: ['Agronomy', 'Solar Energy', 'Rural Technology'],
-      department: 'Institute of Agricultural Sciences',
-      state: 'Uttar Pradesh',
-      contactEmail: 'csr-cell@bhu.ac.in',
-      assignedProblemsCount: 2,
-    },
-  ];
+import { prisma } from '../../config/db.config';
 
-  async getUniversities() {
-    return this.universities;
+export class UniversitiesService {
+  async getAll() {
+    return prisma.universityProfile.findMany({
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: { name: 'asc' },
+    });
   }
 
-  async getAssignedProblems(universityId: string) {
-    return [
-      {
-        id: 'prob-101',
-        title: 'Contaminated Drinking Water Tank in Rampur Village',
-        category: 'WATER_SANITATION',
-        status: 'ASSIGNED_TO_UNIVERSITY',
-        district: 'Lucknow',
+  async getById(id: string) {
+    const uni = await prisma.universityProfile.findUnique({
+      where: { id },
+      include: {
+        user:            { select: { id: true, name: true, email: true } },
+        assignedProblems: true,
+        proposals:       true,
       },
-    ];
+    });
+    if (!uni) throw new Error('University not found');
+    return uni;
+  }
+
+  async createProfile(data: {
+    name: string; code: string; department: string;
+    state: string; contactEmail: string; expertiseTags?: string[];
+  }, userId: string) {
+    return prisma.universityProfile.create({
+      data: { ...data, userId, expertiseTags: data.expertiseTags || [] },
+    });
+  }
+
+  async getProposals(universityId: string) {
+    return prisma.proposal.findMany({
+      where:   { universityId },
+      include: { problem: true },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }
 

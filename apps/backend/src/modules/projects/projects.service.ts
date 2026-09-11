@@ -1,30 +1,88 @@
-export class ProjectsService {
-  private projects = [
-    {
-      id: 'proj-001',
-      proposalId: 'prop-501',
-      problemId: 'prob-101',
-      universityId: 'univ-iitk',
-      industryId: 'ind-tata',
-      title: 'Low-Cost Bio-Sand Water Filtration System for Rural Communities',
-      status: 'IN_DEVELOPMENT',
-      fundedAmount: 1200000,
-      milestones: [
-        { id: 'm-1', title: 'Prototype Design & Testing', isCompleted: true, fundingPercentage: 30 },
-        { id: 'm-2', title: 'Pilot Installation in Rampur', isCompleted: false, fundingPercentage: 40 },
-        { id: 'm-3', title: 'Community Training & Handover', isCompleted: false, fundingPercentage: 30 },
-      ],
-      ipRightsNotes: 'Joint IP ownership between IIT Kanpur and Tata Trusts with open royalty-free license for public health deployment.',
-      createdAt: new Date().toISOString(),
-    },
-  ];
+import { prisma } from '../../config/db.config';
 
-  async getProjects() {
-    return this.projects;
+export class ProjectsService {
+  async getAll() {
+    return prisma.project.findMany({
+      include: {
+        proposal:     { include: { problem: true, university: true } },
+        milestones:   true,
+        fundingOffers: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
-  async getProjectById(id: string) {
-    return this.projects.find((p) => p.id === id) || this.projects[0];
+  async getById(id: string) {
+    const project = await prisma.project.findUnique({
+      where: { id },
+      include: {
+        proposal:      { include: { problem: true, university: true } },
+        milestones:    true,
+        fundingOffers: { include: { industryProfile: true } },
+        industry:      true,
+      },
+    });
+    if (!project) throw new Error('Project not found');
+    return project;
+  }
+
+  async createProposal(data: {
+    problemId: string;
+    universityId: string;
+    title: string;
+    abstract: string;
+    budgetRequired: number;
+    timelineMonths: number;
+  }) {
+    return prisma.proposal.create({ data: { ...data, status: 'SUBMITTED' } });
+  }
+
+  async getAllProposals(filters?: { status?: string; universityId?: string }) {
+    return prisma.proposal.findMany({
+      where: {
+        ...(filters?.status      && { status: filters.status }),
+        ...(filters?.universityId && { universityId: filters.universityId }),
+      },
+      include: {
+        problem:    { select: { id: true, title: true, district: true, state: true } },
+        university: { select: { id: true, name: true, code: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateProposalStatus(id: string, status: string) {
+    const proposal = await prisma.proposal.update({
+      where: { id },
+      data:  { status },
+    });
+
+    // Auto-create project when proposal is APPROVED
+    if (status === 'APPROVED') {
+      await prisma.project.create({
+        data: {
+          proposalId: proposal.id,
+          title:      `Project: ${proposal.title}`,
+          status:     'IN_DEVELOPMENT',
+        },
+      });
+    }
+    return proposal;
+  }
+
+  async updateMilestone(projectId: string, milestoneId: string, isCompleted: boolean) {
+    return prisma.milestone.update({
+      where: { id: milestoneId },
+      data:  { isCompleted },
+    });
+  }
+
+  async getUniversityProjects(universityId: string) {
+    return prisma.project.findMany({
+      where:   { proposal: { universityId } },
+      include: { proposal: { include: { problem: true } }, milestones: true },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }
 

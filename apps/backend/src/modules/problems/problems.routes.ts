@@ -5,13 +5,19 @@ import { uploadMiddleware } from '../../middlewares/upload.middleware';
 
 const router = Router();
 
-router.get('/', (req, res) => problemsController.getAllProblems(req, res));
-router.get('/:id', (req, res) => problemsController.getProblemById(req, res));
+// Public
+router.get('/',     (req, res) => problemsController.getAllProblems(req, res));
+router.get('/mine', authenticateJWT, (req, res) => problemsController.getMyProblems(req, res));
+router.get('/:id',  (req, res) => problemsController.getProblemById(req, res));
+
+// Protected
 router.post(
   '/',
   authenticateJWT,
   uploadMiddleware.array('attachments', 5),
   (req, res) => problemsController.createProblem(req, res)
 );
+router.patch('/:id/status', authenticateJWT, (req, res) => problemsController.updateStatus(req, res));
+router.post('/:id/assign',  authenticateJWT, (req, res) => problemsController.assignUniversity(req, res));
 
 export default router;

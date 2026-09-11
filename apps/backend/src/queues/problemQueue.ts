@@ -1,19 +1,14 @@
-import { Queue, Worker } from 'bullmq';
-import { env } from '../config/env.config';
+// Problem Queue — gracefully disabled if Redis is not available
+let problemQueue: any = { add: async () => {} };
 
-const connection = {
-  host: env.REDIS_HOST,
-  port: env.REDIS_PORT,
-};
+try {
+  const { Queue } = require('bullmq');
+  const { env }   = require('../config/env.config');
+  const connection = { host: env.REDIS_HOST, port: env.REDIS_PORT };
+  problemQueue = new Queue('problem-processing', { connection });
+  console.log('✅ Problem queue connected to Redis');
+} catch {
+  console.warn('⚠️  Redis not available — problem queue running in no-op mode');
+}
 
-export const problemQueue = new Queue('problem-categorization', { connection });
-
-export const problemWorker = new Worker(
-  'problem-categorization',
-  async (job) => {
-    console.log(`[BullMQ] Processing async AI categorization for problem ID: ${job.data.problemId}`);
-    // Simulate async call to FastAPI AI microservice
-    return { status: 'COMPLETED', category: job.data.category || 'INFRASTRUCTURE' };
-  },
-  { connection }
-);
+export { problemQueue };

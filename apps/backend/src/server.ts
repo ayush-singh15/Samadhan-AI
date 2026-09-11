@@ -1,18 +1,23 @@
 import app from './app';
 import { env } from './config/env.config';
-import { connectDB } from './config/db.config';
+import { prisma } from './config/db.config';
 
 const PORT = env.PORT || 5000;
 
 const startServer = async () => {
-  await connectDB();
-  
+  // Verify DB connection
+  await prisma.$connect();
+  console.log('✅ Connected to Neon PostgreSQL');
+
   app.listen(PORT, () => {
     console.log(`==================================================`);
-    console.log(`🚀 TriSetu Backend Server running on port ${PORT}`);
-    console.log(`📑 OpenAPI Swagger Docs: http://localhost:${PORT}/api-docs`);
+    console.log(`🚀 TriSetu Backend running on port ${PORT}`);
+    console.log(`📑 Swagger Docs: http://localhost:${PORT}/api-docs`);
     console.log(`==================================================`);
   });
 };
 
-startServer();
+startServer().catch((err) => {
+  console.error('❌ Failed to start server:', err);
+  process.exit(1);
+});
