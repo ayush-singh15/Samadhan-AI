@@ -1,0 +1,173 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CITIZEN
+  UNIVERSITY
+  INDUSTRY
+  GOVERNMENT
+  ADMIN
+}
+
+enum ProblemStatus {
+  SUBMITTED
+  AI_CATEGORIZED
+  ASSIGNED_TO_UNIVERSITY
+  PROPOSAL_SUBMITTED
+  FUNDING_APPROVED
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+}
+
+enum ProblemCategory {
+  EDUCATION
+  HEALTHCARE
+  AGRICULTURE
+  WATER_SANITATION
+  ENVIRONMENT
+  INFRASTRUCTURE
+  ENERGY
+  OTHER
+}
+
+model User {
+  id               String            @id @default(uuid())
+  email            String            @unique
+  passwordHash     String
+  name             String
+  role             Role              @default(CITIZEN)
+  phone            String?
+  avatarUrl        String?
+  isVerified       Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  problemsSubmitted Problem[]        @relation("SubmittedProblems")
+  universityProfile UniversityProfile?
+  industryProfile   IndustryProfile?
+  notifications    Notification[]
+}
+
+model Problem {
+  id                   String          @id @default(uuid())
+  title                String
+  description          String
+  category             ProblemCategory @default(OTHER)
+  status               ProblemStatus   @default(SUBMITTED)
+  latitude             Float
+  longitude            Float
+  address              String
+  district             String
+  state                String
+  mediaUrls            String[]
+  submittedById        String
+  submittedBy          User            @relation("SubmittedProblems", fields: [submittedById], references: [id])
+  assignedUniversityId String?
+  assignedUniversity   UniversityProfile? @relation(fields: [assignedUniversityId], references: [id])
+  proposals            Proposal[]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+}
+
+model UniversityProfile {
+  id                    String     @id @default(uuid())
+  userId                String     @unique
+  user                  User       @relation(fields: [userId], references: [id])
+  name                  String
+  code                  String     @unique
+  expertiseTags         String[]
+  department            String
+  state                 String
+  contactEmail          String
+  assignedProblems      Problem[]
+  proposals             Proposal[]
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+}
+
+model IndustryProfile {
+  id                    String         @id @default(uuid())
+  userId                String         @unique
+  user                  User           @relation(fields: [userId], references: [id])
+  companyName           String
+  registrationNumber    String         @unique
+  csrFocusAreas         String[]
+  totalBudgetAllocated  Float          @default(0)
+  totalBudgetCommitted  Float          @default(0)
+  contactEmail          String
+  fundingOffers         FundingOffer[]
+  projectsFunded        Project[]
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+}
+
+model Proposal {
+  id            String            @id @default(uuid())
+  problemId     String
+  problem       Problem           @relation(fields: [problemId], references: [id])
+  universityId  String
+  university    UniversityProfile @relation(fields: [universityId], references: [id])
+  title         String
+  abstract      String
+  budgetRequired Float
+  timelineMonths Int
+  status        String            @default("SUBMITTED")
+  project       Project?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model FundingOffer {
+  id                String          @id @default(uuid())
+  industryProfileId String
+  industryProfile   IndustryProfile @relation(fields: [industryProfileId], references: [id])
+  projectId         String
+  project           Project         @relation(fields: [projectId], references: [id])
+  amountOffered     Float
+  status            String          @default("PENDING")
+  createdAt         DateTime        @default(now())
+}
+
+model Project {
+  id            String          @id @default(uuid())
+  proposalId    String          @unique
+  proposal      Proposal        @relation(fields: [proposalId], references: [id])
+  industryId    String?
+  industry      IndustryProfile? @relation(fields: [industryId], references: [id])
+  title         String
+  status        String          @default("IN_DEVELOPMENT")
+  fundedAmount  Float           @default(0)
+  milestones    Milestone[]
+  fundingOffers FundingOffer[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model Milestone {
+  id                String   @id @default(uuid())
+  projectId         String
+  project           Project  @relation(fields: [projectId], references: [id])
+  title             String
+  description       String
+  dueDate           DateTime
+  isCompleted       Boolean  @default(false)
+  fundingPercentage Float
+  createdAt         DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

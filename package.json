@@ -1,0 +1,30 @@
+{
+  "name": "trisetu-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TriSetu - Societal Innovation Collaboration Portal",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm --prefix apps/backend run dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "dev:ai": "npm --prefix apps/ai-service run dev",
+    "build:shared": "npm --prefix packages/shared run build",
+    "build:ui": "npm --prefix packages/ui run build",
+    "build:backend": "npm --prefix apps/backend run build",
+    "build:web": "npm --prefix apps/web run build",
+    "build": "npm run build:shared && npm run build:ui && npm run build:backend && npm run build:web",
+    "lint": "echo \"Running workspace linting...\"",
+    "test": "echo \"Running workspace tests...\""
+  },
+  "keywords": [
+    "trisetu",
+    "societal-innovation",
+    "collaboration-portal",
+    "monorepo"
+  ],
+  "author": "TriSetu Team",
+  "license": "MIT"
+}
