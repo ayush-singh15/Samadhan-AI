@@ -1,11 +1,12 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
 
-# Copy only backend package files first (layer cache)
-COPY package.json package-lock.json* ./
+# Install OpenSSL (required by Prisma on Debian slim)
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# Install all deps
+# Copy package files and install deps
+COPY package.json package-lock.json* ./
 RUN npm install
 
 # Copy prisma schema and generate client
@@ -18,12 +19,14 @@ COPY src ./src
 RUN npm run build
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
+
+# Install OpenSSL at runtime too (Prisma needs it)
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 
-# Copy compiled output + prisma client + deps
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
