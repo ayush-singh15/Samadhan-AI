@@ -9,9 +9,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadDir);
-  },
+  destination: (_req, _file, cb) => cb(null, uploadDir),
   filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
@@ -20,5 +18,5 @@ const storage = multer.diskStorage({
 
 export const uploadMiddleware = multer({
   storage,
-  limits: { fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB fixed
 });
