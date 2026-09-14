@@ -1,37 +1,80 @@
-export class IndustryService {
-  private partners = [
-    {
-      id: 'ind-tata',
-      companyName: 'Tata Trusts & Sustainability Foundation',
-      registrationNumber: 'CSR-IND-9021',
-      csrFocusAreas: ['Water Sanitation', 'Clean Energy', 'Rural Livelihood'],
-      totalBudgetAllocated: 50000000,
-      totalBudgetCommitted: 18500000,
-      contactEmail: 'csr@tatatrusts.org',
-    },
-    {
-      id: 'ind-infosys',
-      companyName: 'Infosys Foundation',
-      registrationNumber: 'CSR-IND-4412',
-      csrFocusAreas: ['Digital Education', 'Healthcare Access', 'Skill Development'],
-      totalBudgetAllocated: 75000000,
-      totalBudgetCommitted: 32000000,
-      contactEmail: 'csr-portal@infosys.com',
-    },
-  ];
+import { prisma } from '../../config/db.config';
 
+export class IndustryService {
   async getIndustryPartners() {
-    return this.partners;
+    return prisma.industryProfile.findMany({
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        projectsFunded: { select: { id: true, title: true, status: true, fundedAmount: true } },
+      },
+      orderBy: { companyName: 'asc' },
+    });
   }
 
-  async createFundingOffer(projectId: string, amount: number) {
-    return {
-      id: 'offer-' + Date.now(),
-      projectId,
-      amountOffered: amount,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-    };
+  async getPartnerById(id: string) {
+    const partner = await prisma.industryProfile.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        fundingOffers: { include: { project: true } },
+        projectsFunded: { include: { milestones: true } },
+      },
+    });
+    if (!partner) throw new Error('Industry partner not found');
+    return partner;
+  }
+
+  async createProfile(data: {
+    companyName: string;
+    registrationNumber: string;
+    csrFocusAreas: string[];
+    totalBudgetAllocated: number;
+    contactEmail: string;
+  }, userId: string) {
+    return prisma.industryProfile.create({
+      data: {
+        ...data,
+        userId,
+      },
+    });
+  }
+
+  async createFundingOffer(projectId: string, amount: number, userId?: string) {
+    let industryProfileId: string;
+
+    if (userId) {
+      const profile = await prisma.industryProfile.findUnique({ where: { userId } });
+      if (!profile) throw new Error('Industry profile required to fund projects');
+      industryProfileId = profile.id;
+    } else {
+      // Fallback to first industry profile if not bound
+      const first = await prisma.industryProfile.findFirst();
+      if (!first) throw new Error('No industry profiles exist');
+      industryProfileId = first.id;
+    }
+
+    const offer = await prisma.fundingOffer.create({
+      data: {
+        projectId,
+        industryProfileId,
+        amountOffered: amount,
+        status: 'PENDING',
+      },
+      include: {
+        project: true,
+        industryProfile: true,
+      },
+    });
+
+    // Update industry totalBudgetCommitted
+    await prisma.industryProfile.update({
+      where: { id: industryProfileId },
+      data: {
+        totalBudgetCommitted: { increment: amount },
+      },
+    });
+
+    return offer;
   }
 }
 
