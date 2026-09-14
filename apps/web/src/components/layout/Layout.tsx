@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { BrandLogo } from '../ui/BrandLogo';
 import type { UserRole } from '../../types';
 
 interface NavItem {
@@ -78,15 +79,10 @@ const Layout: React.FC<Props> = ({ children }) => {
         <div className="flex flex-col min-h-0">
           {/* Logo */}
           <div className={`h-16 px-space-base flex items-center gap-space-sm border-b border-outline-variant/30 ${collapsed ? 'justify-center px-2' : ''}`}>
-            {/* SVG Logo mark */}
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-on-primary font-bold text-sm leading-none">TS</span>
-            </div>
-            {!collapsed && (
-              <div className="flex flex-col min-w-0">
-                <span className="font-headline-sm text-headline-sm text-primary leading-tight">TriSetu</span>
-                <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider text-[10px]">Civic Mesh</span>
-              </div>
+            {collapsed ? (
+              <BrandLogo variant="icon" size="sm" />
+            ) : (
+              <BrandLogo variant="full" size="sm" />
             )}
             <button
               onClick={() => setCollapsed(!collapsed)}

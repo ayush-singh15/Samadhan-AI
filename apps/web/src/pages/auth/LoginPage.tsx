@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { authApi } from '../../api/auth.api';
 import { useAuth } from '../../context/AuthContext';
+import { BrandLogo } from '../../components/ui/BrandLogo';
 import type { UserRole } from '../../types';
 
 function getErrorMessage(err: unknown): string {
@@ -10,10 +11,10 @@ function getErrorMessage(err: unknown): string {
 }
 
 const DEMO_USERS: { role: UserRole; name: string; email: string; label: string; desc: string; icon: string }[] = [
-  { role: 'CITIZEN',    name: 'Rajesh Sharma',      email: 'rajesh@ward42.in',     label: 'Citizen Innovator',     desc: 'Report & track civic problems',       icon: 'person' },
-  { role: 'GOVERNMENT', name: 'Dr. Ananya Sharma',   email: 'ananya@gov.karnataka.in', label: 'Govt Admin Officer',  desc: 'Review, match & approve problems',     icon: 'account_balance' },
-  { role: 'UNIVERSITY', name: 'Prof. Ravi Kumar',    email: 'ravi@iitk.ac.in',      label: 'University Researcher', desc: 'Submit proposals & track milestones',  icon: 'school' },
-  { role: 'INDUSTRY',   name: 'Meera Joshi',         email: 'meera@tatacsrf.com',   label: 'CSR Impact Officer',    desc: 'Browse & fund civic projects',         icon: 'business' },
+  { role: 'CITIZEN',    name: 'Ramesh Kumar',       email: 'citizen@trisetu.in',     label: 'Citizen Innovator',     desc: 'Report & track civic problems',       icon: 'person' },
+  { role: 'GOVERNMENT', name: 'Smt. Priya Nair',    email: 'admin@trisetu.gov.in',   label: 'Govt Admin Officer',  desc: 'Review, match & approve problems',     icon: 'account_balance' },
+  { role: 'UNIVERSITY', name: 'Prof. Alok Sharma',   email: 'prof.sharma@iitk.ac.in', label: 'University Researcher', desc: 'Submit proposals & track milestones',  icon: 'school' },
+  { role: 'INDUSTRY',   name: 'Vikramaditya Roy',   email: 'csr.head@tatatrusts.org',label: 'CSR Impact Officer',    desc: 'Browse & fund civic projects',         icon: 'business' },
 ];
 
 const ROLE_HOME: Record<UserRole, string> = {
@@ -27,6 +28,7 @@ const LoginPage: React.FC = () => {
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? null;
 
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demoLoading, setDemoLoading] = useState<UserRole | null>(null);
@@ -41,7 +43,7 @@ const LoginPage: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const { user, token } = await authApi.login({ email: email.trim() });
+      const { user, token } = await authApi.login({ email: email.trim(), password: password || 'Password@123' });
       setUser(user, token);
       redirect(user.role as UserRole);
     } catch (err) {
@@ -53,31 +55,33 @@ const LoginPage: React.FC = () => {
 
   const handleDemo = async (demo: typeof DEMO_USERS[number]) => {
     setDemoLoading(demo.role);
-    await new Promise((r) => setTimeout(r, 300));
-    const mockUser = { id: `demo-${demo.role.toLowerCase()}`, name: demo.name, email: demo.email, role: demo.role };
-    setUser(mockUser, 'demo_token_' + demo.role.toLowerCase());
-    redirect(demo.role);
-    setDemoLoading(null);
+    try {
+      // Attempt live login with default seed password
+      const { user, token } = await authApi.login({ email: demo.email, password: 'Password@123' });
+      setUser(user, token);
+      redirect(user.role as UserRole);
+    } catch {
+      // Instant fallback if offline
+      const mockUser = { id: `demo-${demo.role.toLowerCase()}`, name: demo.name, email: demo.email, role: demo.role };
+      setUser(mockUser, 'demo_token_' + demo.role.toLowerCase());
+      redirect(demo.role);
+    } finally {
+      setDemoLoading(null);
+    }
   };
 
   return (
     <div className="min-h-screen bg-surface font-body-md flex flex-col">
 
       {/* Minimal nav */}
-      <header className="h-16 px-margin-desktop flex items-center border-b border-outline-variant/30">
+      <header className="h-16 px-margin-mobile md:px-margin-desktop flex items-center justify-between border-b border-outline-variant/30 bg-surface-container-lowest/80 backdrop-blur-md">
         <Link to="/" className="flex items-center gap-space-sm">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-on-primary font-bold text-sm">TS</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-headline-sm text-headline-sm text-primary leading-tight">TriSetu</span>
-            <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider text-[10px]">Civic Mesh</span>
-          </div>
+          <BrandLogo size="md" />
         </Link>
-        <div className="ml-auto flex items-center gap-space-sm">
+        <div className="flex items-center gap-space-sm">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-primary border border-primary/20">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            Live Production Mesh
+            Live National Mesh
           </span>
         </div>
       </header>
@@ -88,9 +92,11 @@ const LoginPage: React.FC = () => {
           {/* ─── Demo Quick Access ──────────────────────────────────────── */}
           <div className="mb-space-xl">
             <div className="text-center mb-space-lg">
-              <p className="font-label-caps text-label-caps text-primary uppercase tracking-wider mb-space-xs">Quick Demo Access</p>
-              <h1 className="font-headline-xl text-headline-xl text-on-surface">Select Your Role</h1>
-              <p className="font-body-md text-body-md text-on-surface-variant mt-space-xs">Experience the full platform instantly — no backend required.</p>
+              <p className="font-label-caps text-label-caps text-primary uppercase tracking-wider mb-space-xs">Quad-Helix Role Access</p>
+              <h1 className="font-headline-xl text-headline-xl text-on-surface font-bold">Select Your Workspace</h1>
+              <p className="font-body-md text-body-md text-on-surface-variant mt-space-xs">
+                Log in directly using pre-configured Quad-Helix credentials.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-space-md">
               {DEMO_USERS.map((d) => (
@@ -98,10 +104,10 @@ const LoginPage: React.FC = () => {
                   key={d.role}
                   onClick={() => handleDemo(d)}
                   disabled={demoLoading !== null}
-                  className={`flex flex-col items-start gap-space-xs p-space-md rounded-xl border-2 transition-all text-left ${
+                  className={`flex flex-col items-start gap-space-xs p-space-md rounded-xl border-2 transition-all text-left bg-surface-container-lowest ${
                     demoLoading === d.role
                       ? 'border-primary bg-primary/5 opacity-75'
-                      : 'border-outline-variant hover:border-primary hover:bg-primary/5'
+                      : 'border-outline-variant/40 hover:border-primary hover:bg-primary/5 shadow-xs'
                   } ${demoLoading !== null && demoLoading !== d.role ? 'opacity-50' : ''}`}
                 >
                   <div className="flex items-center gap-space-xs w-full">
@@ -109,11 +115,11 @@ const LoginPage: React.FC = () => {
                       <span className="material-symbols-outlined text-primary text-[20px]">{d.icon}</span>
                     </div>
                     {demoLoading === d.role && (
-                      <span className="ml-auto font-label-caps text-label-caps text-primary uppercase text-[10px] animate-pulse">Loading…</span>
+                      <span className="ml-auto font-label-caps text-label-caps text-primary uppercase text-[10px] animate-pulse">Entering…</span>
                     )}
                   </div>
                   <p className="font-label-lg text-label-lg text-on-surface font-semibold">{d.label}</p>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px]">{d.desc}</p>
+                  <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px]">{d.name}</p>
                 </button>
               ))}
             </div>
@@ -122,76 +128,63 @@ const LoginPage: React.FC = () => {
           {/* ─── Separator ─────────────────────────────────────────────── */}
           <div className="flex items-center gap-space-md mb-space-xl">
             <div className="flex-1 h-px bg-outline-variant/40" />
-            <span className="font-label-md text-label-md text-on-surface-variant whitespace-nowrap">or sign in with backend</span>
+            <span className="font-label-md text-label-md text-on-surface-variant whitespace-nowrap">or sign in with custom account</span>
             <div className="flex-1 h-px bg-outline-variant/40" />
           </div>
 
           {/* ─── Backend sign-in form ───────────────────────────────────── */}
           <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-space-lg shadow-xs">
-            <h2 className="font-headline-md text-headline-md text-on-surface mb-space-xs">Sign In</h2>
-            <p className="font-body-sm text-body-sm text-on-surface-variant mb-space-lg">Connect to the live TriSetu production mesh.</p>
+            {error && (
+              <div className="mb-space-md p-space-sm rounded-lg bg-error-container text-on-error-container font-body-sm text-body-sm flex items-center gap-space-xs">
+                <span className="material-symbols-outlined text-error text-[18px]">error</span>
+                {error}
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-space-md">
+              <div>
+                <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. resident@ward4.in"
+                  required
+                  className="w-full px-space-md py-2.5 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
 
-            <form onSubmit={handleSubmit} noValidate>
-              <label htmlFor="login-email" className="block font-label-lg text-label-lg text-on-surface mb-space-xs">
-                Email address <span className="text-error">*</span>
-              </label>
-              <input
-                id="login-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@institution.ac.in"
-                required
-                autoComplete="email"
-                disabled={loading}
-                className="w-full bg-surface border border-outline-variant rounded-lg px-4 py-2.5 font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:bg-surface-container-lowest transition-colors mb-space-md disabled:opacity-50"
-              />
-
-              {error && (
-                <div role="alert" className="flex items-start gap-space-xs p-space-sm rounded-lg bg-error-container text-on-error-container font-body-sm text-body-sm mb-space-md">
-                  <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
-                  {error}
-                </div>
-              )}
+              <div>
+                <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-space-md py-2.5 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
 
               <button
                 type="submit"
-                disabled={loading || !isValid}
-                className="w-full py-3 rounded-xl bg-primary text-on-primary font-headline-sm text-headline-sm shadow-xs hover:bg-primary-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-space-xs"
+                disabled={!isValid || loading}
+                className="w-full py-3 rounded-xl bg-primary text-on-primary font-headline-sm text-headline-sm hover:bg-primary-container transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-space-xs"
               >
-                {loading ? (
-                  <>
-                    <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                    Signing in…
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[18px]">login</span>
-                    Sign In to Civic Mesh
-                  </>
-                )}
+                {loading && <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>}
+                {loading ? 'Authenticating…' : 'Sign In to Samadhan AI'}
               </button>
             </form>
-
-            <p className="font-body-sm text-body-sm text-on-surface-variant text-center mt-space-md">
-              New to TriSetu?{' '}
-              <Link to="/register" className="text-primary hover:underline font-label-lg text-label-lg">Create an account</Link>
-            </p>
           </div>
 
-          {/* Trust badges */}
-          <div className="flex flex-wrap items-center justify-center gap-space-lg mt-space-xl text-on-surface-variant">
-            {[
-              { icon: 'verified', text: 'NCIF Compliant' },
-              { icon: 'security', text: 'RTI Transparent' },
-              { icon: 'policy', text: 'MCA Sec. 135 Audited' },
-            ].map(({ icon, text }) => (
-              <div key={text} className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-primary text-[18px]">{icon}</span>
-                <span className="font-label-md text-label-md">{text}</span>
-              </div>
-            ))}
-          </div>
+          <p className="text-center font-body-sm text-body-sm text-on-surface-variant mt-space-md">
+            Don't have an account?{' '}
+            <Link to="/register" className="text-primary font-semibold hover:underline">
+              Create citizen registration
+            </Link>
+          </p>
         </div>
       </main>
     </div>
