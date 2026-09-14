@@ -25,16 +25,33 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allows uploaded images/videos to be viewed from web frontend
 }));
 
-app.use(cors({
-  origin: [
-    'https://trisetu.vercel.app',
-    'https://samadhan-ai.vercel.app',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    process.env.FRONTEND_URL || '',
-  ].filter(Boolean),
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    // Allow all Vercel deployment URLs, aliases, local dev, and custom domains
+    if (
+      origin.endsWith('.vercel.app') ||
+      origin.includes('vercel.app') ||
+      origin.includes('samadhan') ||
+      origin.includes('trisetu') ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1') ||
+      origin.includes('railway.app')
+    ) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Rate Limiting
 const generalLimiter = rateLimit({

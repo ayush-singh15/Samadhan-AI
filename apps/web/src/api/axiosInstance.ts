@@ -8,9 +8,7 @@ import { useAppStore } from '../store';
 export const api = axios.create({
   baseURL:
     import.meta.env.VITE_API_BASE_URL ||
-    (import.meta.env.PROD
-      ? 'https://trisetubackend-production.up.railway.app/api/v1'
-      : 'http://localhost:5000/api/v1'),
+    'https://trisetubackend-production.up.railway.app/api/v1',
   headers: { 'Content-Type': 'application/json' },
 });
 
