@@ -6,7 +6,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT || '5000', 10),
-  DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/trisetu_db',
+  DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/samadhan_db',
   REDIS_HOST: process.env.REDIS_HOST || 'localhost',
   REDIS_PORT: parseInt(process.env.REDIS_PORT || '6379', 10),
   JWT_SECRET: process.env.JWT_SECRET || 'fallback_secret_key',

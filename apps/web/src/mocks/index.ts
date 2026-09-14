@@ -1,5 +1,5 @@
 /**
- * TriSetu — Mock Data
+ * Samadhan AI — Mock Data
  *
  * IMPORTANT: These mocks mirror the exact data shapes returned by the backend API.
  * They are used ONLY when the backend is unavailable locally.

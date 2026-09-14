@@ -18,7 +18,7 @@ export const useAppStore = create<AppStore>()(
       logout: () => set({ user: null, token: null }),
     }),
     {
-      name: 'trisetu_session',
+      name: 'samadhan_session',
       partialize: (state) => ({ user: state.user, token: state.token }),
     }
   )

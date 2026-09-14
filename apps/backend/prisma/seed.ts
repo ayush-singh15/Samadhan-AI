@@ -11,10 +11,10 @@ async function main() {
   // 1. Upsert Demo Users
   console.log('Creating demo users...');
   const citizenUser = await prisma.user.upsert({
-    where: { email: 'citizen@trisetu.in' },
+    where: { email: 'citizen@samadhan.gov.in' },
     update: {},
     create: {
-      email: 'citizen@trisetu.in',
+      email: 'citizen@samadhan.gov.in',
       name: 'Ramesh Kumar (Ward 4 Resident)',
       role: Role.CITIZEN,
       passwordHash,
@@ -24,10 +24,10 @@ async function main() {
   });
 
   const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@trisetu.gov.in' },
+    where: { email: 'admin@samadhan.gov.in' },
     update: {},
     create: {
-      email: 'admin@trisetu.gov.in',
+      email: 'admin@samadhan.gov.in',
       name: 'Smt. Priya Nair (Zonal Commissioner)',
       role: Role.ADMIN,
       passwordHash,

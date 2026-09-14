@@ -1,7 +1,7 @@
 import React from 'react';
 
 const FOOTER_LINKS = [
-  { label: 'About TriSetu', href: '/about' },
+  { label: 'About Samadhan AI', href: '/about' },
   { label: 'Policies', href: '/policies' },
   { label: 'Contact', href: '/contact' },
   { label: 'Grievance', href: '/grievance' },
@@ -16,8 +16,8 @@ const Footer: React.FC = () => {
     >
       <div style={styles.inner}>
         <p style={styles.copy}>
-          © {new Date().getFullYear()} TriSetu — Trust &amp; Accountability Platform
-          for Seed Funding. Ministry of Education Initiative.
+          © {new Date().getFullYear()} Samadhan AI — Digital Public Infrastructure
+          for Civic Innovation &amp; Research Alliances.
         </p>
 
         <nav aria-label="Footer navigation" style={styles.links}>

@@ -1,4 +1,4 @@
-name: TriSetu CI Pipeline
+name: Samadhan AI CI Pipeline
 
 on:
   push:

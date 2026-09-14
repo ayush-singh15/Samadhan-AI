@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import categorize, deduplicate, route_matching
 
 app = FastAPI(
-    title="TriSetu AI Microservice API",
+    title="Samadhan AI Microservice API",
     description="NLP microservice for categorization, semantic deduplication, and university routing.",
     version="1.0.0"
 )
@@ -22,4 +22,4 @@ app.include_router(route_matching.router)
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "service": "TriSetu AI Microservice"}
+    return {"status": "healthy", "service": "Samadhan AI Microservice"}

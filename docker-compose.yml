@@ -3,12 +3,12 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: trisetu-postgres
+    container_name: samadhan-postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: trisetu_db
+      POSTGRES_DB: samadhan_db
     ports:
       - "5432:5432"
     volumes:
@@ -16,7 +16,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: trisetu-redis
+    container_name: samadhan-redis
     restart: always
     ports:
       - "6379:6379"
@@ -27,13 +27,13 @@ services:
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
-    container_name: trisetu-backend
+    container_name: samadhan-backend
     restart: always
     ports:
       - "5000:5000"
     environment:
       NODE_ENV: production
-      DATABASE_URL: "postgresql://postgres:postgrespassword@postgres:5432/trisetu_db?schema=public"
+      DATABASE_URL: "postgresql://postgres:postgrespassword@postgres:5432/samadhan_db?schema=public"
       REDIS_HOST: redis
       REDIS_PORT: 6379
       AI_SERVICE_URL: "http://ai-service:8000"
@@ -45,7 +45,7 @@ services:
     build:
       context: ./apps/ai-service
       dockerfile: Dockerfile
-    container_name: trisetu-ai-service
+    container_name: samadhan-ai-service
     restart: always
     ports:
       - "8000:8000"
@@ -54,7 +54,7 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
-    container_name: trisetu-web
+    container_name: samadhan-web
     restart: always
     ports:
       - "3000:80"

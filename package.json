@@ -20,11 +20,11 @@
     "test": "echo \"Running workspace tests...\""
   },
   "keywords": [
-    "trisetu",
+    "samadhan-ai",
     "societal-innovation",
     "collaboration-portal",
     "monorepo"
   ],
-  "author": "TriSetu Team",
+  "author": "Ayush Singh <spec.ayush@gmail.com>",
   "license": "MIT"
 }

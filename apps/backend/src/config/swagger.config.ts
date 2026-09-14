@@ -4,9 +4,9 @@ const options: swaggerJSDoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'TriSetu API Documentation',
+      title: 'Samadhan AI API Documentation',
       version: '1.0.0',
-      description: 'REST API documentation for TriSetu — Societal Innovation Collaboration Portal',
+      description: 'REST API documentation for Samadhan AI — Digital Public Infrastructure for Civic Innovation',
     },
     servers: [
       {

@@ -312,8 +312,8 @@ const CitizenDashboard: React.FC = () => {
           {/* Trust protocol */}
           <div className="bg-inverse-surface rounded-xl p-space-md">
             <p className="font-label-caps text-label-caps text-inverse-primary uppercase tracking-wider text-[10px] mb-space-xs">Institutional Trust Protocol</p>
-            <h4 className="font-headline-sm text-headline-sm text-inverse-on-surface mb-space-xs">TriSetu Cryptographic Ledger</h4>
-            <p className="font-body-sm text-body-sm text-inverse-on-surface/70">Every submission is stamped onto the Karnataka State Civic Data Mesh with hash provenance and academic peer-review verification.</p>
+            <h4 className="font-headline-sm text-headline-sm text-inverse-on-surface mb-space-xs">Samadhan AI Cryptographic Ledger</h4>
+            <p className="font-body-sm text-body-sm text-inverse-on-surface/70">Every submission is stamped onto the Civic Data Mesh with hash provenance and academic peer-review verification.</p>
             <p className="font-code text-code text-inverse-primary/80 mt-space-sm text-[11px]">SHA-256 Node: BBMP-IND42-2024-ZK9</p>
           </div>
         </div>

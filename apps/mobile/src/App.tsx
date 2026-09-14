@@ -11,7 +11,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🌉 TriSetu Mobile</Text>
+        <Text style={styles.headerTitle}>🇮🇳 Samadhan AI Mobile</Text>
         <Text style={styles.headerSubtitle}>Citizen Field Reporting</Text>
       </View>
 

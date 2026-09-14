@@ -1,5 +1,5 @@
 // ============================================================
-// TriSetu — Shared Frontend Types
+// Samadhan AI — Shared Frontend Types
 // Aligned with Prisma schema in apps/backend/prisma/schema.prisma
 // ============================================================
 
@@ -57,7 +57,9 @@ export interface Problem {
   state: string;
   mediaUrls?: string[];
   submittedById: string;
+  submittedBy?: { id: string; name: string; email?: string };
   assignedUniversityId?: string;
+  assignedUniversity?: { id: string; name: string; code?: string; department?: string; state?: string };
   createdAt: string;
   updatedAt: string;
   // AI-added fields (from AI service, not in Prisma yet)
@@ -116,6 +118,8 @@ export interface Proposal {
   // Joined fields (populated by API)
   universityName?: string;
   problemTitle?: string;
+  university?: { id: string; name: string; code?: string; department?: string; state?: string };
+  problem?: Problem;
 }
 
 // ---- Projects & Milestones ---------------------------------
@@ -144,6 +148,7 @@ export interface Project {
   // Joined fields
   problemTitle?: string;
   universityName?: string;
+  proposal?: Proposal;
 }
 
 // ---- Funding -----------------------------------------------

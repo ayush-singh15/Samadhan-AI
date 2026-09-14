@@ -11,8 +11,8 @@ function getErrorMessage(err: unknown): string {
 }
 
 const DEMO_USERS: { role: UserRole; name: string; email: string; label: string; desc: string; icon: string }[] = [
-  { role: 'CITIZEN',    name: 'Ramesh Kumar',       email: 'citizen@trisetu.in',     label: 'Citizen Innovator',     desc: 'Report & track civic problems',       icon: 'person' },
-  { role: 'GOVERNMENT', name: 'Smt. Priya Nair',    email: 'admin@trisetu.gov.in',   label: 'Govt Admin Officer',  desc: 'Review, match & approve problems',     icon: 'account_balance' },
+  { role: 'CITIZEN',    name: 'Ramesh Kumar',       email: 'citizen@samadhan.gov.in',     label: 'Citizen Innovator',     desc: 'Report & track civic problems',       icon: 'person' },
+  { role: 'GOVERNMENT', name: 'Smt. Priya Nair',    email: 'admin@samadhan.gov.in',   label: 'Govt Admin Officer',  desc: 'Review, match & approve problems',     icon: 'account_balance' },
   { role: 'UNIVERSITY', name: 'Prof. Alok Sharma',   email: 'prof.sharma@iitk.ac.in', label: 'University Researcher', desc: 'Submit proposals & track milestones',  icon: 'school' },
   { role: 'INDUSTRY',   name: 'Vikramaditya Roy',   email: 'csr.head@tatatrusts.org',label: 'CSR Impact Officer',    desc: 'Browse & fund civic projects',         icon: 'business' },
 ];
