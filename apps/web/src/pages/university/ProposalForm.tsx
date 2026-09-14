@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { problemsApi } from '../../api/problems.api';
-import type { Problem, ProblemCategory } from '../../types';
+import { projectsApi } from '../../api/projects.api';
+import type { Problem } from '../../types';
 
 interface FormState {
   title: string;
@@ -15,9 +16,9 @@ type FieldErrors = Partial<Record<keyof FormState, string>>;
 function validate(f: FormState): FieldErrors {
   const e: FieldErrors = {};
   if (!f.title.trim() || f.title.trim().length < 10) e.title = 'Title must be at least 10 characters.';
-  if (!f.abstract.trim() || f.abstract.trim().length < 50) e.abstract = 'Abstract must be at least 50 characters.';
+  if (!f.abstract.trim() || f.abstract.trim().length < 50) e.abstract = 'Abstract must be at least 50 characters detailing the engineering methodology.';
   if (!f.budgetRequired || isNaN(Number(f.budgetRequired)) || Number(f.budgetRequired) <= 0) e.budgetRequired = 'Enter a valid budget amount.';
-  if (!f.timelineMonths || isNaN(Number(f.timelineMonths)) || Number(f.timelineMonths) < 1) e.timelineMonths = 'Enter a valid number of months.';
+  if (!f.timelineMonths || isNaN(Number(f.timelineMonths)) || Number(f.timelineMonths) < 1) e.timelineMonths = 'Enter a valid duration in months.';
   return e;
 }
 
@@ -26,14 +27,31 @@ const ProposalForm: React.FC = () => {
   const navigate = useNavigate();
 
   const [problem, setProblem] = useState<Problem | null>(null);
-  const [form, setForm] = useState<FormState>({ title: '', abstract: '', budgetRequired: '', timelineMonths: '' });
+  const [form, setForm] = useState<FormState>({
+    title: '',
+    abstract: '',
+    budgetRequired: '1450000',
+    timelineMonths: '4',
+  });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    if (problemId) problemsApi.getById(problemId).then(setProblem).catch(() => null);
+    if (problemId) {
+      problemsApi.getById(problemId)
+        .then((p) => {
+          setProblem(p);
+          if (p) {
+            setForm((f) => ({
+              ...f,
+              title: f.title || `Feasibility & Prototyping: ${p.title}`,
+            }));
+          }
+        })
+        .catch(() => null);
+    }
   }, [problemId]);
 
   const set = (field: keyof FormState) =>
@@ -45,17 +63,24 @@ const ProposalForm: React.FC = () => {
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     const errs = validate(form);
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
     setSubmitError(null);
     setLoading(true);
+
     try {
-      // TODO: call POST /api/v1/proposals
-      // Payload: { problemId, title, abstract, budgetRequired: Number, timelineMonths: Number }
-      // This endpoint is not yet implemented in the backend.
-      await new Promise((r) => setTimeout(r, 800));
+      await projectsApi.createProposal({
+        problemId: problemId!,
+        title: form.title,
+        abstract: form.abstract,
+        budgetRequired: Number(form.budgetRequired),
+        timelineMonths: Number(form.timelineMonths),
+      });
       setSubmitted(true);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Submission failed. Try again.');
+    } catch (err: any) {
+      setSubmitError(err.message || 'Submission failed. Please check network connection.');
     } finally {
       setLoading(false);
     }
@@ -63,97 +88,168 @@ const ProposalForm: React.FC = () => {
 
   if (submitted) {
     return (
-      <div style={s.page}>
-        <div style={s.successCard}>
-          <div style={s.successIcon}>✓</div>
-          <h1 style={s.successTitle}>Proposal submitted</h1>
-          <p style={s.successDesc}>Your solution proposal has been submitted for admin review. You will be notified once it is reviewed.</p>
-          <button onClick={() => navigate('/university')} style={s.primaryBtn}>Back to Dashboard</button>
+      <div className="min-h-screen bg-surface p-space-lg flex items-center justify-center">
+        <div className="max-w-md w-full bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-space-2xl text-center shadow-lg">
+          <div className="w-16 h-16 rounded-full bg-green-50 border border-green-200 text-green-700 flex items-center justify-center mx-auto mb-space-lg text-2xl font-bold">
+            <span className="material-symbols-outlined text-[32px]">task_alt</span>
+          </div>
+          <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold mb-space-xs">
+            Proposal Dispatched
+          </h1>
+          <p className="font-body-md text-body-md text-on-surface-variant mb-space-xl leading-relaxed">
+            Your technical solution proposal has been logged to the state civic ledger and queued for municipal sign-off and CSR funding allocation.
+          </p>
+          <button
+            onClick={() => navigate('/university')}
+            className="w-full py-3 rounded-xl bg-primary text-on-primary font-headline-sm text-headline-sm hover:bg-primary-container transition-all shadow-md"
+          >
+            Return to Operations Desk
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={s.page}>
-      <div style={s.pageHeader}>
-        <div style={s.inner}>
-          <Link to="/university/problems" style={s.backLink}>← Back to problems</Link>
-          <h1 style={s.pageTitle}>Submit Solution Proposal</h1>
-          {problem && <p style={s.pageSubtitle}>For: <strong>{problem.title}</strong> · {problem.district}, {problem.state}</p>}
+    <div className="min-h-screen bg-surface p-space-lg">
+      <div className="max-w-3xl mx-auto flex flex-col gap-space-lg">
+
+        {/* Header Breadcrumb */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-space-lg shadow-xs">
+          <Link
+            to="/university/problems"
+            className="inline-flex items-center gap-1 text-primary font-label-md text-label-md hover:underline mb-space-xs"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            Back to Assigned Mandates
+          </Link>
+          <h1 className="font-headline-xl text-headline-xl text-on-surface font-bold">
+            Submit Solution Proposal
+          </h1>
+          {problem && (
+            <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+              Engineering Mandate: <strong className="text-on-surface">{problem.title}</strong> · {problem.district}, {problem.state}
+            </p>
+          )}
         </div>
-      </div>
 
-      <div style={s.content}>
-        <div style={s.notice}>
-          <strong>⚠ Note:</strong> The proposal submission endpoint is not yet active in the backend. This form will not save real data yet.
+        {/* Proposal Form Card */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-space-xl shadow-xs">
+          {submitError && (
+            <div className="mb-space-lg p-space-md rounded-xl bg-error-container text-on-error-container font-body-sm text-body-sm flex items-center gap-space-xs">
+              <span className="material-symbols-outlined text-error text-[20px]">error</span>
+              {submitError}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-space-lg">
+            <div>
+              <label htmlFor="pf-title" className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
+                Proposal Title <span className="text-error">*</span>
+              </label>
+              <input
+                id="pf-title"
+                type="text"
+                value={form.title}
+                onChange={set('title')}
+                placeholder="e.g. Decentralized Solar Cold Storage Unit with Phase Change Thermal Buffering"
+                disabled={loading}
+                className="w-full px-space-md py-2.5 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              {errors.title && <p className="text-error font-body-sm text-[11px] mt-1">{errors.title}</p>}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="pf-abstract" className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+                  Technical Abstract & Methodology <span className="text-error">*</span>
+                </label>
+                <span className="font-code text-code text-[11px] text-on-surface-variant">
+                  {form.abstract.length} characters
+                </span>
+              </div>
+              <textarea
+                id="pf-abstract"
+                value={form.abstract}
+                onChange={set('abstract')}
+                rows={6}
+                placeholder="Describe your lab's engineering approach, system architecture, telemetry hardware, and expected community outcome…"
+                disabled={loading}
+                className="w-full px-space-md py-2.5 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary leading-relaxed"
+              />
+              {errors.abstract && <p className="text-error font-body-sm text-[11px] mt-1">{errors.abstract}</p>}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+              <div>
+                <label htmlFor="pf-budget" className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
+                  Budget Required (₹) <span className="text-error">*</span>
+                </label>
+                <input
+                  id="pf-budget"
+                  type="number"
+                  min="1"
+                  value={form.budgetRequired}
+                  onChange={set('budgetRequired')}
+                  placeholder="1450000"
+                  disabled={loading}
+                  className="w-full px-space-md py-2.5 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {errors.budgetRequired && <p className="text-error font-body-sm text-[11px] mt-1">{errors.budgetRequired}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="pf-months" className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
+                  Target Timeline (Months) <span className="text-error">*</span>
+                </label>
+                <input
+                  id="pf-months"
+                  type="number"
+                  min="1"
+                  max="48"
+                  value={form.timelineMonths}
+                  onChange={set('timelineMonths')}
+                  placeholder="4"
+                  disabled={loading}
+                  className="w-full px-space-md py-2.5 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {errors.timelineMonths && <p className="text-error font-body-sm text-[11px] mt-1">{errors.timelineMonths}</p>}
+              </div>
+            </div>
+
+            {/* Tranche Policy Notice */}
+            <div className="p-space-md rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-start gap-space-sm">
+              <span className="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">info</span>
+              <p className="font-body-sm text-body-sm text-on-surface-variant text-[12px] leading-relaxed">
+                Upon administrative approval or CSR co-financing, this proposal will automatically unlock a 3-stage milestone tranche release schedule (30% Inception, 40% Field Deployment, 30% Public Handover).
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-space-md pt-space-xs">
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-space-xl py-3 rounded-xl bg-primary text-on-primary font-headline-sm text-headline-sm shadow-md hover:bg-primary-container transition-all disabled:opacity-50 flex items-center gap-space-xs"
+              >
+                {loading && <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>}
+                {loading ? 'Transmitting Mandate…' : 'Submit Proposal to Administration'}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/university/problems')}
+                disabled={loading}
+                className="px-space-lg py-3 rounded-xl border border-outline-variant text-on-surface font-headline-sm text-headline-sm hover:bg-surface-container-high transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
 
-        <form onSubmit={handleSubmit} noValidate style={s.form}>
-          <Field id="pf-title" label="Proposal Title" required error={errors.title}>
-            <input id="pf-title" type="text" value={form.title} onChange={set('title')} placeholder="A concise name for your solution" disabled={loading} style={{ ...s.input, borderColor: errors.title ? '#fca5a5' : '#d1d5db' }} />
-          </Field>
-
-          <Field id="pf-abstract" label="Abstract / Approach" required error={errors.abstract}>
-            <textarea id="pf-abstract" value={form.abstract} onChange={set('abstract')} rows={6} placeholder="Describe your technical approach, methodology, and expected outcomes…" disabled={loading} style={{ ...s.textarea, borderColor: errors.abstract ? '#fca5a5' : '#d1d5db' }} />
-            <span style={s.hint}>{form.abstract.length} characters</span>
-          </Field>
-
-          <div style={s.twoCol}>
-            <Field id="pf-budget" label="Budget Required (₹)" required error={errors.budgetRequired}>
-              <input id="pf-budget" type="number" min="1" value={form.budgetRequired} onChange={set('budgetRequired')} placeholder="1500000" disabled={loading} style={{ ...s.input, borderColor: errors.budgetRequired ? '#fca5a5' : '#d1d5db' }} />
-            </Field>
-            <Field id="pf-months" label="Timeline (months)" required error={errors.timelineMonths}>
-              <input id="pf-months" type="number" min="1" max="60" value={form.timelineMonths} onChange={set('timelineMonths')} placeholder="12" disabled={loading} style={{ ...s.input, borderColor: errors.timelineMonths ? '#fca5a5' : '#d1d5db' }} />
-            </Field>
-          </div>
-
-          {submitError && <p role="alert" style={s.serverError}>{submitError}</p>}
-
-          <div style={s.actions}>
-            <button type="submit" disabled={loading} style={{ ...s.primaryBtn, opacity: loading ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer', border: 'none' }}>
-              {loading ? 'Submitting…' : 'Submit Proposal'}
-            </button>
-            <button type="button" onClick={() => navigate('/university/problems')} disabled={loading} style={s.secondaryBtn}>Cancel</button>
-          </div>
-        </form>
       </div>
     </div>
   );
-};
-
-const Field: React.FC<{ id: string; label: string; required?: boolean; error?: string; children: React.ReactNode }> = ({ id, label, required, error, children }) => (
-  <div style={{ marginBottom: '0' }}>
-    <label htmlFor={id} style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#374151', marginBottom: '0.375rem' }}>
-      {label} {required && <span style={{ color: '#b91c1c' }}>*</span>}
-    </label>
-    {children}
-    {error && <p style={{ fontSize: '0.8125rem', color: '#b91c1c', marginTop: '0.25rem' }} role="alert">{error}</p>}
-  </div>
-);
-
-const s: Record<string, React.CSSProperties> = {
-  page: { fontFamily: 'Inter, system-ui, sans-serif', color: '#111827', minHeight: '100%' },
-  pageHeader: { background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '1.5rem' },
-  inner: { maxWidth: '720px', margin: '0 auto' },
-  backLink: { display: 'inline-block', fontSize: '0.8125rem', color: '#1d4ed8', textDecoration: 'none', marginBottom: '0.75rem', fontWeight: 500 },
-  pageTitle: { fontSize: '1.375rem', fontWeight: 700, marginBottom: '0.25rem', letterSpacing: '-0.01em' },
-  pageSubtitle: { fontSize: '0.875rem', color: '#6b7280' },
-  content: { maxWidth: '720px', margin: '0 auto', padding: '2rem 1.5rem' },
-  notice: { background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '4px', padding: '0.875rem 1rem', fontSize: '0.875rem', color: '#92400e', marginBottom: '1.5rem', lineHeight: 1.5 },
-  form: { display: 'flex', flexDirection: 'column' as const, gap: '1.25rem' },
-  twoCol: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' },
-  input: { display: 'block', width: '100%', boxSizing: 'border-box' as const, padding: '0.625rem 0.875rem', border: '1px solid', borderRadius: '3px', fontSize: '0.9375rem', color: '#111827', background: '#fafaf9', outline: 'none', fontFamily: 'inherit' },
-  textarea: { display: 'block', width: '100%', boxSizing: 'border-box' as const, padding: '0.625rem 0.875rem', border: '1px solid', borderRadius: '3px', fontSize: '0.9375rem', color: '#111827', background: '#fafaf9', outline: 'none', fontFamily: 'inherit', resize: 'vertical' as const, lineHeight: 1.6 },
-  hint: { fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginTop: '0.25rem' },
-  serverError: { padding: '0.75rem 1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '3px', fontSize: '0.875rem', color: '#b91c1c' },
-  actions: { display: 'flex', gap: '0.75rem', flexWrap: 'wrap' as const },
-  primaryBtn: { padding: '0.7rem 1.5rem', background: '#1d4ed8', color: '#fff', borderRadius: '3px', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'inherit', display: 'inline-block', textDecoration: 'none', cursor: 'pointer' },
-  secondaryBtn: { padding: '0.7rem 1.5rem', background: 'transparent', color: '#374151', border: '1px solid #d1d5db', borderRadius: '3px', fontSize: '0.9375rem', cursor: 'pointer', fontFamily: 'inherit' },
-  successCard: { maxWidth: '480px', margin: '4rem auto', background: '#fff', border: '1px solid #e5e7eb', borderTop: '4px solid #15803d', borderRadius: '4px', padding: '2.5rem 2rem', textAlign: 'center' as const },
-  successIcon: { width: '48px', height: '48px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '50%', margin: '0 auto 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', color: '#15803d', fontWeight: 700 },
-  successTitle: { fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' },
-  successDesc: { fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.6, marginBottom: '1.5rem' },
 };
 
 export default ProposalForm;

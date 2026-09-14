@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { mock_projects } from '../../mocks';
+import { projectsApi } from '../../api/projects.api';
 import type { Project, Milestone } from '../../types';
-
-// TODO: replace with real API call to GET /api/v1/projects/:id when backend is built
 
 const MilestoneTracker: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -12,129 +10,192 @@ const MilestoneTracker: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Mock lookup — replace with API call
-    const found = mock_projects.find((p) => p.id === projectId) ?? mock_projects[0];
-    setProject(found);
-    setMilestones(found?.milestones ?? []);
-    setLoading(false);
-  }, [projectId]);
-
-  const handleComplete = async (msId: string) => {
-    setSubmitting(msId);
-    // TODO: call PATCH /api/v1/projects/:projectId/milestones/:msId { isCompleted: true }
-    await new Promise((r) => setTimeout(r, 400));
-    setMilestones((prev) => prev.map((m) => m.id === msId ? { ...m, isCompleted: true } : m));
-    setSubmitting(null);
+  const loadProject = async () => {
+    if (!projectId) return;
+    try {
+      const p = await projectsApi.getById(projectId);
+      setProject(p);
+      setMilestones(p?.milestones ?? []);
+    } catch (err) {
+      console.error('Failed to load project details:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) return <div style={s.page}><div style={s.content}><p>Loading…</p></div></div>;
-  if (!project) return <div style={s.page}><div style={s.content}><p>Project not found.</p></div></div>;
+  useEffect(() => {
+    loadProject();
+  }, [projectId]);
 
-  const totalFunding = milestones.reduce((sum, m) => sum + m.fundingPercentage, 0);
-  const earnedFunding = milestones.filter((m) => m.isCompleted).reduce((sum, m) => sum + m.fundingPercentage, 0);
+  const handleToggle = async (msId: string, currentStatus: boolean) => {
+    if (!project) return;
+    setSubmitting(msId);
+    try {
+      await projectsApi.updateMilestone(project.id, msId, !currentStatus);
+      setMilestones((prev) =>
+        prev.map((m) => (m.id === msId ? { ...m, isCompleted: !currentStatus } : m))
+      );
+      // Reload project state to reflect any project completion cascade
+      loadProject();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update milestone status');
+    } finally {
+      setSubmitting(null);
+    }
+  };
 
-  return (
-    <div style={s.page}>
-      <div style={s.pageHeader}>
-        <div style={s.inner}>
-          <Link to="/university/projects" style={s.backLink}>← Projects</Link>
-          <h1 style={s.pageTitle}>{project.title}</h1>
-          <p style={s.pageSubtitle}>
-            {milestones.filter((m) => m.isCompleted).length}/{milestones.length} milestones complete ·{' '}
-            Funding earned: {earnedFunding.toFixed(0)}% / {totalFunding.toFixed(0)}%
-          </p>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface p-space-lg flex items-center justify-center">
+        <div className="flex items-center gap-2 text-on-surface-variant">
+          <span className="material-symbols-outlined animate-spin text-2xl">refresh</span>
+          <span className="font-body-md">Loading milestone audit telemetry…</span>
         </div>
       </div>
+    );
+  }
 
-      <div style={s.content}>
-        <div style={s.notice}>
-          <strong>⚠ Mock Data:</strong> Milestone update endpoint is not yet available. Completions won't persist.
+  if (!project) {
+    return (
+      <div className="min-h-screen bg-surface p-space-lg">
+        <div className="max-w-2xl mx-auto bg-surface-container-lowest p-space-xl rounded-2xl text-center border border-outline-variant/30">
+          <p className="font-headline-sm text-on-surface mb-2">Project Not Found</p>
+          <Link to="/university/projects" className="text-primary font-label-md hover:underline">
+            Return to Project Directory
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const completedCount = milestones.filter((m) => m.isCompleted).length;
+  const progressPercent = milestones.length > 0 ? Math.round((completedCount / milestones.length) * 100) : 0;
+  const totalFunding = milestones.reduce((sum, m) => sum + m.fundingPercentage, 0);
+  const earnedFunding = milestones
+    .filter((m) => m.isCompleted)
+    .reduce((sum, m) => sum + m.fundingPercentage, 0);
+
+  return (
+    <div className="min-h-screen bg-surface p-space-lg">
+      <div className="max-w-4xl mx-auto flex flex-col gap-space-lg">
+
+        {/* Header Breadcrumb */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-space-lg shadow-xs">
+          <Link
+            to="/university/projects"
+            className="inline-flex items-center gap-1 text-primary font-label-md text-label-md hover:underline mb-space-xs"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            Back to Active Projects
+          </Link>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm mt-1">
+            <div>
+              <h1 className="font-headline-xl text-headline-xl text-on-surface font-bold">
+                {project.title}
+              </h1>
+              <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                {completedCount} of {milestones.length} milestones verified · Escrow Unlocked: {earnedFunding}% of {totalFunding}%
+              </p>
+            </div>
+            <span className={`px-3 py-1 rounded-full font-label-caps text-label-caps font-bold self-start md:self-auto ${
+              progressPercent === 100
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-primary/10 text-primary border border-primary/20'
+            }`}>
+              {progressPercent === 100 ? 'PROJECT RESOLVED' : 'ACTIVE IN R&D'}
+            </span>
+          </div>
         </div>
 
-        {/* Progress bar */}
-        <div style={s.progressBlock}>
-          <div style={s.progressLabel}>
-            <span style={s.progText}>Overall Progress</span>
-            <span style={s.progPct}>{milestones.length > 0 ? Math.round((milestones.filter((m) => m.isCompleted).length / milestones.length) * 100) : 0}%</span>
+        {/* Overall Progress Card */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-space-lg shadow-xs">
+          <div className="flex items-center justify-between mb-space-xs">
+            <span className="font-label-lg text-label-lg text-on-surface font-semibold">
+              Tranche Execution Velocity
+            </span>
+            <span className="font-headline-sm text-headline-sm font-bold text-primary">
+              {progressPercent}% Complete
+            </span>
           </div>
-          <div style={s.progressBar}>
-            <div style={{ ...s.progressFill, width: `${milestones.length > 0 ? (milestones.filter((m) => m.isCompleted).length / milestones.length) * 100 : 0}%` }} />
+          <div className="w-full bg-surface-container-high rounded-full h-2.5 overflow-hidden">
+            <div
+              className="bg-primary h-2.5 rounded-full transition-all duration-500"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
         </div>
 
-        {/* Milestone list */}
-        {milestones.length === 0
-          ? <div style={s.empty}><p>No milestones defined for this project.</p></div>
-          : (
-            <div style={s.list}>
-              {milestones.map((m, i) => (
-                <div key={m.id} style={{ ...s.card, opacity: m.isCompleted ? 0.75 : 1 }}>
-                  <div style={s.cardTop}>
-                    <div style={{ ...s.dot, ...(m.isCompleted ? s.dotDone : s.dotPending) }}>
-                      {m.isCompleted ? '✓' : i + 1}
+        {/* Milestone Cards */}
+        <div className="flex flex-col gap-space-md">
+          {milestones.map((m, idx) => {
+            const isToggling = submitting === m.id;
+            return (
+              <div
+                key={m.id}
+                className={`bg-surface-container-lowest border rounded-2xl p-space-lg shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-space-md ${
+                  m.isCompleted ? 'border-green-200 bg-green-50/10' : 'border-outline-variant/30'
+                }`}
+              >
+                <div className="flex items-start gap-space-md">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-headline-sm font-bold ${
+                      m.isCompleted
+                        ? 'bg-green-600 text-white'
+                        : 'bg-surface-container-high text-on-surface-variant'
+                    }`}
+                  >
+                    {m.isCompleted ? (
+                      <span className="material-symbols-outlined text-[22px]">check</span>
+                    ) : (
+                      idx + 1
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-space-xs mb-1 flex-wrap">
+                      <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold">
+                        {m.title}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-md bg-surface-container text-on-surface-variant font-label-caps text-[10px] font-bold">
+                        Tranche: {m.fundingPercentage}% Grant
+                      </span>
                     </div>
-                    <div style={s.cardMain}>
-                      <h2 style={s.cardTitle}>{m.title}</h2>
-                      <p style={s.cardDesc}>{m.description}</p>
-                      <p style={s.cardMeta}>
-                        Due: {new Date(m.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        {' · '}Funding: {m.fundingPercentage}% of total
-                      </p>
-                    </div>
-                    <div style={s.cardRight}>
-                      {m.isCompleted ? (
-                        <span style={s.completedBadge}>Completed ✓</span>
-                      ) : (
-                        <button
-                          onClick={() => handleComplete(m.id)}
-                          disabled={submitting === m.id}
-                          style={{ ...s.completeBtn, opacity: submitting === m.id ? 0.6 : 1 }}
-                        >
-                          {submitting === m.id ? '…' : 'Mark Complete'}
-                        </button>
-                      )}
+                    <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed text-[13px]">
+                      {m.description}
+                    </p>
+                    <div className="flex items-center gap-space-sm text-[11px] text-on-surface-variant/80 mt-2">
+                      <span className="material-symbols-outlined text-[14px]">event</span>
+                      Due: {new Date(m.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )
-        }
+
+                {/* Status Toggle Button */}
+                <button
+                  disabled={isToggling}
+                  onClick={() => handleToggle(m.id, m.isCompleted)}
+                  className={`px-space-lg py-2.5 rounded-xl font-label-md text-label-md font-bold transition-all flex items-center gap-1.5 shrink-0 self-start md:self-auto ${
+                    m.isCompleted
+                      ? 'bg-surface-container text-on-surface hover:bg-surface-container-high border border-outline-variant/40'
+                      : 'bg-primary text-on-primary hover:bg-primary-container shadow-xs'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {m.isCompleted ? 'undo' : 'verified'}
+                  </span>
+                  {isToggling
+                    ? 'Updating…'
+                    : m.isCompleted
+                    ? 'Mark Incomplete'
+                    : 'Verify & Release Tranche'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
       </div>
     </div>
   );
-};
-
-const s: Record<string, React.CSSProperties> = {
-  page: { fontFamily: 'Inter, system-ui, sans-serif', color: '#111827', minHeight: '100%' },
-  pageHeader: { background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '1.5rem' },
-  inner: { maxWidth: '1100px', margin: '0 auto' },
-  backLink: { display: 'inline-block', fontSize: '0.8125rem', color: '#1d4ed8', textDecoration: 'none', marginBottom: '0.75rem', fontWeight: 500 },
-  pageTitle: { fontSize: '1.375rem', fontWeight: 700, marginBottom: '0.25rem', letterSpacing: '-0.01em' },
-  pageSubtitle: { fontSize: '0.875rem', color: '#6b7280' },
-  content: { maxWidth: '1100px', margin: '0 auto', padding: '2rem 1.5rem' },
-  notice: { background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '4px', padding: '0.875rem 1rem', fontSize: '0.875rem', color: '#92400e', marginBottom: '1.5rem', lineHeight: 1.5 },
-  progressBlock: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '1.25rem', marginBottom: '1.5rem' },
-  progressLabel: { display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' },
-  progText: { fontSize: '0.875rem', fontWeight: 600, color: '#374151' },
-  progPct: { fontSize: '0.875rem', fontWeight: 700, color: '#1d4ed8' },
-  progressBar: { height: '8px', background: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' },
-  progressFill: { height: '100%', background: '#1d4ed8', borderRadius: '4px' },
-  list: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem' },
-  card: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '1.25rem' },
-  cardTop: { display: 'flex', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' as const },
-  dot: { width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 700, flexShrink: 0 },
-  dotDone: { background: '#166534', color: '#fff', border: '1px solid #15803d' },
-  dotPending: { background: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb' },
-  cardMain: { flex: 1, minWidth: 0 },
-  cardTitle: { fontSize: '0.9375rem', fontWeight: 700, color: '#111827', marginBottom: '0.375rem' },
-  cardDesc: { fontSize: '0.875rem', color: '#374151', lineHeight: 1.6, marginBottom: '0.375rem' },
-  cardMeta: { fontSize: '0.8125rem', color: '#6b7280' },
-  cardRight: { flexShrink: 0 },
-  completedBadge: { fontSize: '0.75rem', fontWeight: 600, color: '#15803d', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '3px', padding: '0.2rem 0.625rem', whiteSpace: 'nowrap' as const, display: 'inline-block' },
-  completeBtn: { padding: '0.375rem 0.875rem', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: '3px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' as const },
-  empty: { textAlign: 'center' as const, padding: '3rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '4px', color: '#6b7280' },
 };
 
 export default MilestoneTracker;

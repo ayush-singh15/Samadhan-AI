@@ -24,8 +24,8 @@ export class ProjectsController {
 
   async createProposal(req: AuthenticatedRequest, res: Response) {
     try {
-      const proposal = await projectsService.createProposal(req.body);
-      return sendResponse(res, 201, true, 'Proposal submitted', proposal);
+      const proposal = await projectsService.createProposal(req.body, req.user?.id);
+      return sendResponse(res, 201, true, 'Proposal submitted successfully', proposal);
     } catch (err: any) {
       return sendResponse(res, 400, false, err.message);
     }
