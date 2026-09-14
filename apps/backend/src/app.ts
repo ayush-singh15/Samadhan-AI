@@ -23,6 +23,7 @@ app.use(helmet());
 app.use(cors({
   origin: [
     'https://trisetu.vercel.app',
+    'https://samadhan-ai.vercel.app',
     'http://localhost:5173',
     'http://localhost:3000',
     process.env.FRONTEND_URL || '',
@@ -40,7 +41,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API Health Check
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'TriSetu Backend Microservice is Healthy' });
+  res.status(200).json({ status: 'OK', message: 'Samadhan AI Backend Microservice is Healthy' });
 });
 
 // API Routes (v1)

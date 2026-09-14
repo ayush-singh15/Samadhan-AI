@@ -1,5 +1,5 @@
 {
-  "name": "@trisetu/backend",
+  "name": "@samadhan-ai/backend",
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {

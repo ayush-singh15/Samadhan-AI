@@ -1,15 +1,15 @@
-# TriSetu (त्रिसेतु) 🌉
-> **Societal Innovation Collaboration Portal** — Connecting Citizens, Universities, and Industry/CSR Partners to Solve Local Societal Problems.
+# Samadhan AI (समाधान AI) 🌉
+> **Digital Public Infrastructure for Quad-Helix Civic Innovation** — Connecting Citizens, Municipal Government, Universities, and Corporate CSR Partners to resolve grassroots societal challenges.
 
 ---
 
-## 📌 Problem & Solution Overview
+## 📌 Mission & Architecture Overview
 
-**TriSetu** bridges the tri-fold gap between:
-1. **Citizens**: Submit geotagged local societal challenges (sanitation, roads, water, public health, primary education) with photo/video proof.
-2. **Universities & Academic Institutions**: AI automatically categorizes and routes problems to student/faculty teams to propose innovative solutions (R&D / Hackathons / Final Year Projects).
-3. **Industry & CSR Partners**: Browse proposals, fund projects via CSR budgets, and mentor solution delivery.
-4. **Government Authorities**: Monitor real-time impact analytics, milestone completions, and resource deployment across states/districts.
+**Samadhan AI** bridges the Quad-Helix gap between:
+1. **Citizens**: Submit geotagged local civic challenges (sanitation, roads, drinking water, public health, primary education) with telemetry and photographic proof.
+2. **Municipal Administration**: Automated triage, priority assignment, and zonal audit verification.
+3. **Universities & Academic Institutions**: Multi-factor AI vector matching automatically categorizes and routes mandates to student/faculty research teams to engineer working prototypes.
+4. **Corporate & CSR Partners**: Browse proposals, fund projects via MCA Sec. 135-compliant CSR budgets, and release milestone-linked tranches.
 
 ---
 

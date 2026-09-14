@@ -10,7 +10,7 @@ const ports = Array.from(new Set([primaryPort, 5000, 8080]));
 
 ports.forEach((p) => {
   app.listen(p, HOST, () => {
-    console.log(`🚀 TriSetu Backend running on http://${HOST}:${p}`);
+    console.log(`🚀 Samadhan AI Backend running on http://${HOST}:${p}`);
     console.log(`📑 Swagger Docs: http://${HOST}:${p}/api-docs`);
   });
 });

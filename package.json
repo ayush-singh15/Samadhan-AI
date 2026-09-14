@@ -1,8 +1,8 @@
 {
-  "name": "trisetu-monorepo",
+  "name": "samadhan-ai",
   "version": "1.0.0",
   "private": true,
-  "description": "TriSetu - Societal Innovation Collaboration Portal",
+  "description": "Samadhan AI - Digital Public Infrastructure for Civic Innovation",
   "workspaces": [
     "apps/*",
     "packages/*"
