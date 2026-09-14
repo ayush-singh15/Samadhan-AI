@@ -26,6 +26,15 @@ export class ProblemsController {
     }
   }
 
+  async getMatches(req: Request, res: Response) {
+    try {
+      const matches = await problemsService.getMatches(req.params.id);
+      return sendResponse(res, 200, true, 'University matches computed', matches);
+    } catch (err: any) {
+      return sendResponse(res, 404, false, err.message);
+    }
+  }
+
   async createProblem(req: AuthenticatedRequest, res: Response) {
     try {
       const userId = req.user?.id;

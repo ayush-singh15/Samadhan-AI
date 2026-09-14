@@ -1,5 +1,7 @@
 import { prisma } from '../../config/db.config';
 import { ProblemCategory, ProblemStatus } from '@prisma/client';
+import { matchingService } from './matching.service';
+import { notificationsService } from '../notifications/notifications.service';
 
 export class ProblemsService {
   async getAllProblems(filters?: { status?: string; category?: string }) {
@@ -64,11 +66,40 @@ export class ProblemsService {
     });
   }
 
+  async getMatches(problemId: string) {
+    return matchingService.matchUniversitiesForProblem(problemId);
+  }
+
   async assignUniversity(problemId: string, universityId: string) {
-    return prisma.problem.update({
+    const problem = await prisma.problem.update({
       where: { id: problemId },
       data:  { assignedUniversityId: universityId, status: 'ASSIGNED_TO_UNIVERSITY' },
+      include: {
+        assignedUniversity: true,
+      },
     });
+
+    // Notify University Lead
+    if (problem.assignedUniversity?.userId) {
+      await notificationsService.sendTriggerNotification(
+        problem.assignedUniversity.userId,
+        'New Problem Mandate Assigned',
+        `Administration assigned "${problem.title}" to your institution. Please review and submit a proposal.`,
+        'MANDATE_ASSIGNED'
+      ).catch(() => {});
+    }
+
+    // Notify Reporting Citizen
+    if (problem.submittedById) {
+      await notificationsService.sendTriggerNotification(
+        problem.submittedById,
+        'Problem Assigned to University',
+        `Your report "${problem.title}" was assigned to ${problem.assignedUniversity?.name || 'an academic institution'} for feasibility review.`,
+        'PROBLEM_ASSIGNED'
+      ).catch(() => {});
+    }
+
+    return problem;
   }
 
   async getMyProblems(userId: string) {

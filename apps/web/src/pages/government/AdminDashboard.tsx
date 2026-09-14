@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { problemsApi } from '../../api/problems.api';
+import { problemsApi, type UniversityMatch } from '../../api/problems.api';
 import type { Problem } from '../../types';
 
 type View = 'queue' | 'studio';
@@ -10,25 +10,71 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('queue');
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
+  const [matches, setMatches] = useState<UniversityMatch[]>([]);
+  const [matchingLoading, setMatchingLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const loadProblems = async () => {
+    try {
+      const all = await problemsApi.getAll();
+      setProblems(all);
+      if (all.length > 0 && !selectedProblem) {
+        setSelectedProblem(all[0]);
+      }
+    } catch {
+      setProblems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    problemsApi.getAll()
-      .then((all) => {
-        setProblems(all);
-        if (all.length > 0) setSelectedProblem(all[0]);
-      })
-      .catch(() => setProblems([]))
-      .finally(() => setLoading(false));
+    loadProblems();
   }, []);
+
+  // Fetch real AI matches whenever selectedProblem changes
+  useEffect(() => {
+    if (!selectedProblem) return;
+    setMatchingLoading(true);
+    problemsApi.getMatches(selectedProblem.id)
+      .then((m) => setMatches(m))
+      .catch(() => setMatches([]))
+      .finally(() => setMatchingLoading(false));
+  }, [selectedProblem?.id]);
 
   const pending = problems.filter(p => p.status === 'SUBMITTED').length;
   const aiMatched = problems.filter(p => p.status === 'AI_CATEGORIZED').length;
-  const active = problems.filter(p => p.status === 'ASSIGNED_TO_UNIVERSITY').length;
+  const active = problems.filter(p => p.status === 'ASSIGNED_TO_UNIVERSITY' || p.status === 'IN_PROGRESS').length;
 
-  const MOCK_MATCHES = [
-    { rank: 'IISc', name: 'Team Jal-Shuddhi', dept: 'Dept. of Chemical Engineering, IISc Bengaluru', score: '96% Match', vector: '0.9628', capabilities: '2 Nanomaterial filtration patents; functional pilot lake cleanup', lead: 'Dr. K. Ramanathan', researchers: 4, availability: 'Ready for Q3 Pilot deployment', bg: 'bg-primary' },
-    { rank: 'BMS', name: 'Environmental Tech Lab', dept: 'BMS College of Engineering, Dept. of Civil Engineering', score: '88% Match', vector: '0.8814', capabilities: 'Low-cost solar water telemetry nodes, rapid colorimetric heavy-metal field kits', lead: 'Prof. S. Nandakumar', researchers: 3, availability: 'Lab Bench Verified', bg: 'bg-secondary' },
-  ];
+  const handleAssign = async (universityId: string) => {
+    if (!selectedProblem) return;
+    setActionLoading(true);
+    try {
+      await problemsApi.assignUniversity(selectedProblem.id, universityId);
+      alert('Academic Mandate Dispatched! Problem assigned to university research node.');
+      await loadProblems();
+    } catch (err: any) {
+      alert(err.message || 'Failed to dispatch mandate');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (status: string) => {
+    if (!selectedProblem) return;
+    setActionLoading(true);
+    try {
+      await problemsApi.updateStatus(selectedProblem.id, status);
+      alert(`Problem status updated to ${status}`);
+      await loadProblems();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update status');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const topMatch = matches[0];
 
   return (
     <div className="flex flex-col w-full gap-space-xl">
@@ -41,7 +87,7 @@ const AdminDashboard: React.FC = () => {
             <div className="flex items-center gap-space-xs mb-1">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-primary">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                GovOps Node ID: KA-URB-BLR-01
+                GovOps Node ID: UP-URB-LKO-01
               </span>
               <span className="text-on-surface-variant/40 font-code text-code">•</span>
               <span className="font-code text-code text-on-surface-variant text-[11px] uppercase tracking-wider">Secured State Ledger</span>
@@ -50,7 +96,7 @@ const AdminDashboard: React.FC = () => {
               Municipal Admin & Zonal Officer Console
             </h1>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Region: <span className="font-semibold text-on-surface">Karnataka Urban Development</span> • Zonal Jurisdiction: Bengaluru North & Peripheral Belts
+              Region: <span className="font-semibold text-on-surface">Uttar Pradesh Urban Development</span> • Jurisdiction: Lucknow, Varanasi & Kanpur Belts
             </p>
           </div>
           {/* Mode switcher + export */}
@@ -58,53 +104,52 @@ const AdminDashboard: React.FC = () => {
             <div className="inline-flex p-1 rounded-xl bg-surface-container-low shadow-inner">
               <button
                 onClick={() => setView('queue')}
-                className={`flex items-center gap-1.5 px-space-md py-1.5 rounded-lg font-label-md text-label-md transition-all ${view === 'queue' ? 'bg-surface-container-lowest text-primary shadow-xs font-semibold' : 'text-on-surface-variant hover:text-on-surface'}`}
+                className={`px-3 py-1.5 rounded-lg font-label-md text-label-md transition-all ${view === 'queue' ? 'bg-surface-container-lowest text-on-surface font-semibold shadow-xs' : 'text-on-surface-variant hover:text-on-surface'}`}
               >
-                <span className="material-symbols-outlined text-[18px]">verified_user</span>
-                Problem Verification Queue
+                Verification Queue
               </button>
-              <button
-                onClick={() => setView('studio')}
-                className={`flex items-center gap-1.5 px-space-md py-1.5 rounded-lg font-label-md text-label-md transition-all ${view === 'studio' ? 'bg-surface-container-lowest text-primary shadow-xs font-semibold' : 'text-on-surface-variant hover:text-on-surface'}`}
+              <Link
+                to="/admin/matching"
+                className="px-3 py-1.5 rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface flex items-center gap-1"
               >
-                <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                AI University Matching Studio
-              </button>
+                AI Matching Studio
+                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+              </Link>
             </div>
-            <button className="flex items-center gap-1.5 px-space-md py-2 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md shadow-xs hover:opacity-95 transition-opacity">
-              <span className="material-symbols-outlined text-[18px]">download</span>
+            <button
+              onClick={() => alert('Exporting signed audit manifest for UP Urban Development Commission...')}
+              className="px-space-md py-2 rounded-xl bg-surface-container-low border border-outline-variant/30 text-on-surface font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container transition-colors shadow-xs"
+            >
+              <span className="material-symbols-outlined text-[16px]">file_download</span>
               Export Audit Manifest
             </button>
           </div>
         </div>
+      </section>
 
-        {/* KPI strip */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-space-md mt-space-lg pt-space-md bg-surface-container-low/40 -mx-space-lg -mb-space-lg px-space-lg pb-space-lg rounded-b-xl">
-          {[
-            { label: 'Total Civic Reports', value: loading ? '—' : problems.length.toLocaleString(), icon: 'folder_open', sub: '+14% vs last cycle', subColor: 'text-primary', accent: '' },
-            { label: 'Pending Initial Review', value: loading ? '—' : String(pending), icon: 'emergency_home', sub: 'Avg queue wait: 3.2 hrs', subColor: 'text-on-surface-variant', accent: 'border-t-2 border-tertiary', badge: 'Action Required', badgeColor: 'bg-tertiary/10 text-tertiary' },
-            { label: 'AI Pre-Screened & Matched', value: loading ? '—' : String(aiMatched), icon: 'psychology', sub: 'Ready for final sign-off', subColor: 'text-on-surface-variant', accent: '' },
-            { label: 'Active University Deployments', value: loading ? '—' : String(active), icon: 'domain_verification', sub: 'Across 14 Tier-1 labs', subColor: 'text-on-surface-variant', accent: '' },
-            { label: 'Avg Resolution Speed', value: '34 Days', icon: 'schedule', sub: '', subColor: '', accent: '', progress: 68 },
-          ].map(({ label, value, icon, sub, subColor, accent, badge, badgeColor, progress }) => (
-            <div key={label} className={`flex flex-col p-space-sm rounded-xl bg-surface-container-lowest shadow-xs ${accent}`}>
-              <div className="flex items-center justify-between text-on-surface-variant">
-                <span className="font-label-caps text-label-caps uppercase text-[10px]">{label}</span>
-                <span className="material-symbols-outlined text-[16px]">{icon}</span>
-              </div>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="font-headline-xl text-headline-xl text-on-surface tracking-tight">{value}</span>
-                {badge && <span className={`px-1.5 py-0.5 rounded-full font-label-caps text-label-caps text-[10px] ${badgeColor}`}>{badge}</span>}
-              </div>
-              {sub && <span className={`font-body-sm text-body-sm mt-0.5 text-[11px] ${subColor}`}>{sub}</span>}
-              {progress !== undefined && (
-                <div className="mt-1 w-full bg-surface-container-high rounded-full h-1">
-                  <div className="bg-primary h-1 rounded-full" style={{ width: `${progress}%` }} />
-                </div>
-              )}
+      {/* ─── KPI Strip ─────────────────────────────────────────────────── */}
+      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-space-md">
+        {[
+          { icon: 'description', label: 'Total Civic Reports', val: String(problems.length), sub: 'State repository', color: 'text-primary' },
+          { icon: 'assignment_late', label: 'Pending Initial Review', val: String(pending), sub: 'Action required', color: 'text-tertiary', border: 'border-l-4 border-l-tertiary' },
+          { icon: 'psychology', label: 'AI Pre-Screened', val: String(aiMatched), sub: 'Ready for triage', color: 'text-primary' },
+          { icon: 'school', label: 'Active University Deployments', val: String(active), sub: 'Research underway', color: 'text-primary' },
+          { icon: 'speed', label: 'Avg Resolution Speed', val: '14.2 Days', sub: 'Target: 21 days', color: 'text-primary', progress: 68 },
+        ].map(({ icon, label, val, sub, color, border, progress }, i) => (
+          <div key={i} className={`bg-surface-container-lowest rounded-xl p-space-md shadow-xs flex flex-col justify-between ${border || ''}`}>
+            <div className="flex items-center justify-between mb-space-xs">
+              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase text-[10px] leading-tight">{label}</span>
+              <span className={`material-symbols-outlined text-[20px] ${color}`}>{icon}</span>
             </div>
-          ))}
-        </div>
+            <p className="font-headline-lg text-headline-lg text-on-surface my-1">{val}</p>
+            <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px]">{sub}</p>
+            {progress !== undefined && (
+              <div className="mt-1 w-full bg-surface-container-high rounded-full h-1">
+                <div className="bg-primary h-1 rounded-full" style={{ width: `${progress}%` }} />
+              </div>
+            )}
+          </div>
+        ))}
       </section>
 
       {/* ─── Main Content Area ──────────────────────────────────────────── */}
@@ -138,10 +183,12 @@ const AdminDashboard: React.FC = () => {
                       <span className="material-symbols-outlined text-[14px]">location_on</span>
                       {p.district}, {p.state}
                     </div>
-                    <span className="ml-auto flex items-center gap-1 font-label-md text-label-md text-on-surface-variant text-[11px]">
-                      <span className="w-2 h-2 rounded-full bg-error animate-pulse" />
-                      {Math.floor(Math.random() * 48) + 1} HRS AGO
-                    </span>
+                    {p.status === 'ASSIGNED_TO_UNIVERSITY' && (
+                      <span className="ml-auto flex items-center gap-1 font-label-md text-label-md text-primary text-[11px] font-bold">
+                        <span className="material-symbols-outlined text-[14px]">verified</span>
+                        ASSIGNED
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-space-xs mb-space-sm">
@@ -158,56 +205,49 @@ const AdminDashboard: React.FC = () => {
                   <h2 className="font-headline-md text-headline-md text-on-surface mb-space-xs">{p.title}</h2>
                   <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">verified</span>
-                    Verified Citizen Report • Impact Reach: ~18,400 Residents
+                    Logged by Verified Resident ({p.submittedBy?.name || 'Citizen'}) • Address: {p.address}
                   </p>
                 </div>
 
-                {/* AI Threat Analysis */}
-                <div className="mx-space-lg my-space-md p-space-md rounded-lg bg-surface-container border border-outline-variant/30">
-                  <div className="flex items-center justify-between mb-space-xs">
-                    <div className="flex items-center gap-space-xs">
-                      <span className="material-symbols-outlined text-primary text-[18px]">psychology</span>
-                      <span className="font-label-lg text-label-lg text-on-surface font-semibold">TriSetu Automated Threat Analysis</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-label-caps text-label-caps text-on-surface-variant uppercase text-[10px]">Risk Index</p>
-                      <p className="font-headline-md text-headline-md text-error font-bold">8.8 / 10</p>
-                    </div>
-                  </div>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">Confidence Rating: 94.2% across 3 baseline sensor arrays</p>
-                </div>
-
-                {/* Description */}
-                <div className="px-space-lg pb-space-md">
-                  <p className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider text-[10px] mb-space-xs">Detailed Incident Narrative</p>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-3">{p.description}</p>
-                </div>
-
-                {/* Technical domains */}
-                <div className="px-space-lg pb-space-md">
-                  <p className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider text-[10px] mb-space-xs">AI-Extracted Technical Domains</p>
-                  <div className="flex flex-wrap gap-space-xs">
-                    {['Heavy metal filtration', 'Adsorption column', 'IoT water turbidity sensor', 'Chelation bio-filters'].map(tag => (
-                      <span key={tag} className="px-2.5 py-0.5 rounded-full bg-surface-container text-on-surface font-label-md text-label-md text-[11px]">{tag}</span>
-                    ))}
-                  </div>
+                {/* Narrative */}
+                <div className="p-space-lg">
+                  <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed mb-space-md">
+                    {p.description}
+                  </p>
                 </div>
 
                 {/* Actions */}
                 <div className="px-space-lg pb-space-lg flex flex-wrap gap-space-sm border-t border-outline-variant/20 pt-space-md">
-                  <button className="px-space-md py-2 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-1.5 hover:bg-primary-container transition-colors shadow-xs">
+                  <button
+                    disabled={actionLoading}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (topMatch) handleAssign(topMatch.universityId);
+                    }}
+                    className="px-space-md py-2 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-1.5 hover:bg-primary-container transition-colors shadow-xs"
+                  >
                     <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                    Approve for Matching
+                    Approve & Match Mandate
                   </button>
-                  <button className="px-space-md py-2 rounded-xl border border-outline-variant text-on-surface font-label-lg text-label-lg flex items-center gap-1.5 hover:bg-surface-container-low transition-colors">
-                    <span className="material-symbols-outlined text-[18px]">help</span>
-                    Request Clarification
+                  <button
+                    disabled={actionLoading}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStatusUpdate('IN_PROGRESS');
+                    }}
+                    className="px-space-md py-2 rounded-xl border border-outline-variant text-on-surface font-label-lg text-label-lg flex items-center gap-1.5 hover:bg-surface-container-low transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">play_arrow</span>
+                    Mark In-Progress
                   </button>
-                  <button className="px-space-md py-2 rounded-xl border border-outline-variant text-on-surface-variant font-label-lg text-label-lg flex items-center gap-1.5 hover:bg-surface-container-low transition-colors">
-                    <span className="material-symbols-outlined text-[18px]">alt_route</span>
-                    Re-route to Works
-                  </button>
-                  <button className="px-space-md py-2 rounded-xl bg-error-container text-on-error-container font-label-lg text-label-lg flex items-center gap-1.5 hover:opacity-90 transition-opacity">
+                  <button
+                    disabled={actionLoading}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStatusUpdate('REJECTED');
+                    }}
+                    className="px-space-md py-2 rounded-xl bg-error-container text-on-error-container font-label-lg text-label-lg flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                  >
                     <span className="material-symbols-outlined text-[18px]">cancel</span>
                     Reject
                   </button>
@@ -227,7 +267,7 @@ const AdminDashboard: React.FC = () => {
               <p className="font-label-lg text-label-lg text-on-surface font-semibold">AI Recommendation Assistance</p>
             </div>
             <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px]">
-              Algorithms rank institutions based on publication proximity, active lab infrastructure, and historical pilot completion. Final contractual engagement requires Administrative Sign-off.
+              Algorithms rank registered universities based on domain taxonomy, laboratory capacity, and geographic proximity. Final contractual engagement requires Administrative Sign-off.
             </p>
           </div>
 
@@ -235,71 +275,102 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-xs">
             <div className="flex items-center justify-between mb-space-md">
               <h3 className="font-headline-sm text-headline-sm text-on-surface">Ranked Academic Matches</h3>
-              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-label-caps text-label-caps text-[10px]">2 High Matches</span>
+              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-label-caps text-label-caps text-[10px]">
+                {matches.length} Candidates
+              </span>
             </div>
-            <div className="flex flex-col gap-space-md">
-              {MOCK_MATCHES.map((m, i) => (
-                <div key={i} className="rounded-xl border border-outline-variant/30 overflow-hidden">
-                  <div className="flex items-center justify-between p-space-sm bg-surface-container-low">
-                    <div className="flex items-center gap-space-sm">
-                      <div className={`w-10 h-10 rounded-lg ${m.bg} flex items-center justify-center`}>
-                        <span className="font-headline-sm text-headline-sm text-on-primary">{m.rank}</span>
+
+            {matchingLoading ? (
+              <div className="p-space-lg text-center text-on-surface-variant">
+                <span className="material-symbols-outlined animate-spin text-2xl mb-1">refresh</span>
+                <p className="font-body-sm text-body-sm">Calculating vector matches…</p>
+              </div>
+            ) : matches.length === 0 ? (
+              <div className="p-space-md text-center text-on-surface-variant">
+                <p className="font-body-sm text-body-sm">Select a problem to view candidate recommendations.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-space-md">
+                {matches.map((m, i) => (
+                  <div key={m.universityId} className="rounded-xl border border-outline-variant/30 overflow-hidden">
+                    <div className="flex items-center justify-between p-space-sm bg-surface-container-low">
+                      <div className="flex items-center gap-space-sm">
+                        <div className={`w-8 h-8 rounded-lg ${i === 0 ? 'bg-primary' : 'bg-secondary'} flex items-center justify-center`}>
+                          <span className="font-headline-sm text-headline-sm text-on-primary">#{i + 1}</span>
+                        </div>
+                        <div>
+                          <p className="font-label-lg text-label-lg text-on-surface font-semibold">{m.name}</p>
+                          <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px]">{m.department}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-label-lg text-label-lg text-on-surface font-semibold">{m.name}</p>
-                        <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px]">{m.dept}</p>
+                      <div className="text-right">
+                        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-label-md text-label-md font-semibold text-[11px]">
+                          {Math.round(m.matchScore * 100)}% Match
+                        </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-label-md text-label-md font-semibold text-[11px]">{m.score}</span>
-                      <p className="font-code text-code text-on-surface-variant text-[11px] mt-0.5">Vector: {m.vector}</p>
+                    <div className="p-space-sm">
+                      <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px] mb-space-sm">{m.rationale}</p>
+                      
+                      <div className="flex flex-wrap gap-1 mb-space-sm">
+                        {m.matchingTags.map((tag, tIdx) => (
+                          <span key={tIdx} className="px-2 py-0.5 rounded bg-surface-container text-on-surface font-label-caps text-[9px]">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between mb-space-sm text-[11px] text-on-surface-variant">
+                        <span>Lead: {m.leadContact}</span>
+                        <span>Active Load: {m.activeLoad} Projects</span>
+                      </div>
+
+                      <button
+                        disabled={actionLoading}
+                        onClick={() => handleAssign(m.universityId)}
+                        className="mt-space-sm w-full py-2 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-1.5 hover:bg-primary-container transition-colors shadow-xs"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">handshake</span>
+                        {i === 0 ? 'Assign Problem & Tender RFP' : 'Select Academic Node'}
+                      </button>
                     </div>
                   </div>
-                  <div className="p-space-sm">
-                    <p className="font-label-caps text-label-caps text-on-surface-variant uppercase text-[10px] mb-space-2xs">Core Capabilities</p>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px] mb-space-sm">{m.capabilities}</p>
-                    <div className="flex items-center justify-between mb-space-sm">
-                      <div className="flex items-center gap-1 text-[11px] text-on-surface-variant">
-                        <span className="material-symbols-outlined text-[14px]">person</span>
-                        {m.lead} • {m.researchers} PhD Researchers
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className={`font-label-caps text-label-caps text-[10px] uppercase ${i === 0 ? 'text-primary' : 'text-tertiary'}`}>{m.availability}</span>
-                    </div>
-                    <button className="mt-space-sm w-full py-2 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-1.5 hover:bg-primary-container transition-colors shadow-xs">
-                      <span className="material-symbols-outlined text-[16px]">handshake</span>
-                      {i === 0 ? 'Assign Problem & Tender RFP' : 'Invite Co-Proposal'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Administrative Allocation Deck */}
           <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-xs">
             <p className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider text-[10px] mb-space-sm">Administrative Allocation Deck</p>
-            <p className="font-body-sm text-body-sm text-on-surface-variant mb-space-md">Karnataka Urban Innovation Seed Fund (KUISF)</p>
+            <p className="font-body-sm text-body-sm text-on-surface-variant mb-space-md">State Civic Innovation Seed Fund (SCISF)</p>
             <div className="bg-surface-container-low rounded-lg p-space-sm mb-space-sm">
               <p className="font-label-caps text-label-caps text-on-surface-variant uppercase text-[10px] mb-1">Target Academic Consortium</p>
-              <p className="font-label-lg text-label-lg text-on-surface">Team Jal-Shuddhi (IISc Bengaluru)</p>
+              <p className="font-label-lg text-label-lg text-on-surface">
+                {topMatch?.name || 'Academic Consortium Selected via AI'}
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-space-sm mb-space-md">
               <div className="bg-surface-container-low rounded-lg p-space-sm">
                 <p className="font-label-caps text-label-caps text-on-surface-variant uppercase text-[10px] mb-1">Grant Allocation</p>
-                <p className="font-headline-sm text-headline-sm text-on-surface">₹2,50,000</p>
+                <p className="font-headline-sm text-headline-sm text-on-surface">₹14,50,000</p>
               </div>
               <div className="bg-surface-container-low rounded-lg p-space-sm">
                 <p className="font-label-caps text-label-caps text-on-surface-variant uppercase text-[10px] mb-1">Milestone Tranches</p>
-                <p className="font-headline-sm text-headline-sm text-on-surface">3 Stages (40-40-20)</p>
+                <p className="font-headline-sm text-headline-sm text-on-surface">3 Stages (30-40-30)</p>
               </div>
             </div>
-            <button className="w-full py-3 rounded-xl bg-inverse-surface text-inverse-on-surface font-headline-sm text-headline-sm flex items-center justify-center gap-space-xs hover:opacity-90 transition-opacity shadow-md">
+            <button
+              disabled={actionLoading || !topMatch}
+              onClick={() => {
+                if (topMatch) handleAssign(topMatch.universityId);
+              }}
+              className="w-full py-3 rounded-xl bg-inverse-surface text-inverse-on-surface font-headline-sm text-headline-sm flex items-center justify-center gap-space-xs hover:opacity-90 transition-opacity shadow-md disabled:opacity-50"
+            >
               <span className="material-symbols-outlined">verified_user</span>
               Issue Formal Token & Dispatch Mandate
             </button>
-            <p className="font-code text-code text-on-surface-variant text-[10px] text-center mt-space-xs">Immutable execution logged onto Karnataka State Civic Data Mesh</p>
+            <p className="font-code text-code text-on-surface-variant text-[10px] text-center mt-space-xs">Immutable execution logged onto Uttar Pradesh Civic Data Mesh</p>
           </div>
         </div>
       </div>

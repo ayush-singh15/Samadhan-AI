@@ -5,12 +5,13 @@ import { uploadMiddleware } from '../../middlewares/upload.middleware';
 
 const router = Router();
 
-// Public
-router.get('/',     (req, res) => problemsController.getAllProblems(req, res));
-router.get('/mine', authenticateJWT, (req, res) => problemsController.getMyProblems(req, res));
-router.get('/:id',  (req, res) => problemsController.getProblemById(req, res));
+// Public / Read
+router.get('/',            (req, res) => problemsController.getAllProblems(req, res));
+router.get('/mine',        authenticateJWT, (req, res) => problemsController.getMyProblems(req, res));
+router.get('/:id',         (req, res) => problemsController.getProblemById(req, res));
+router.get('/:id/matches', (req, res) => problemsController.getMatches(req, res));
 
-// Protected
+// Protected / Mutate
 router.post(
   '/',
   authenticateJWT,

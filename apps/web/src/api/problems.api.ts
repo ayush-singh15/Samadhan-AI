@@ -1,19 +1,19 @@
-/**
- * Problems API — wraps GET/POST /api/v1/problems
- *
- * Real endpoints available:
- *   GET  /api/v1/problems          → getAllProblems (no auth required)
- *   GET  /api/v1/problems/:id      → getProblemById (no auth required)
- *   POST /api/v1/problems          → createProblem (JWT required, multipart/form-data)
- *
- * Not yet implemented in backend:
- *   PATCH /api/v1/problems/:id/status    (needed for admin approve/reject)
- *   PATCH /api/v1/problems/:id/assign    (needed for university matching)
- *   GET   /api/v1/problems?submittedById (needed for citizen "my problems")
- */
 import { api } from './axiosInstance';
 import type { Problem, ProblemCategory } from '../types';
-import { mock_problems } from '../mocks';
+import { mock_problems, mock_matches } from '../mocks';
+
+export interface UniversityMatch {
+  universityId: string;
+  name: string;
+  code: string;
+  department: string;
+  state: string;
+  matchScore: number;
+  matchingTags: string[];
+  rationale: string;
+  leadContact: string;
+  activeLoad: number;
+}
 
 interface CreateProblemPayload {
   title: string;
@@ -34,14 +34,13 @@ interface ApiEnvelope<T> {
 }
 
 export const problemsApi = {
-  /** GET /api/v1/problems — returns all problems (uses real API) */
-  async getAll(): Promise<Problem[]> {
+  /** GET /api/v1/problems — returns all problems */
+  async getAll(params?: { status?: string; category?: string }): Promise<Problem[]> {
     try {
-      const { data } = await api.get<ApiEnvelope<Problem[]>>('/problems');
+      const { data } = await api.get<ApiEnvelope<Problem[]>>('/problems', { params });
       if (data.success) return data.data;
       return mock_problems;
     } catch {
-      // Backend not running — fall back to mocks silently in dev
       console.warn('[problemsApi.getAll] Backend unavailable, using mock data');
       return mock_problems;
     }
@@ -57,6 +56,32 @@ export const problemsApi = {
       console.warn('[problemsApi.getById] Backend unavailable, using mock data');
       return mock_problems.find((p) => p.id === id) ?? null;
     }
+  },
+
+  /** GET /api/v1/problems/:id/matches — AI ranking for university assignment */
+  async getMatches(id: string): Promise<UniversityMatch[]> {
+    try {
+      const { data } = await api.get<ApiEnvelope<UniversityMatch[]>>(`/problems/${id}/matches`);
+      if (data.success && data.data?.length > 0) return data.data;
+      return mock_matches as any;
+    } catch {
+      console.warn('[problemsApi.getMatches] Falling back to mock matches');
+      return mock_matches as any;
+    }
+  },
+
+  /** POST /api/v1/problems/:id/assign — Assign problem mandate to university */
+  async assignUniversity(problemId: string, universityId: string): Promise<Problem> {
+    const { data } = await api.post<ApiEnvelope<Problem>>(`/problems/${problemId}/assign`, { universityId });
+    if (!data.success) throw new Error(data.message);
+    return data.data;
+  },
+
+  /** PATCH /api/v1/problems/:id/status — Admin review approval/rejection */
+  async updateStatus(problemId: string, status: string): Promise<Problem> {
+    const { data } = await api.patch<ApiEnvelope<Problem>>(`/problems/${problemId}/status`, { status });
+    if (!data.success) throw new Error(data.message);
+    return data.data;
   },
 
   /** POST /api/v1/problems — creates a problem (JWT required) */
