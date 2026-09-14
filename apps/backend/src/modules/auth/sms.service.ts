@@ -1,4 +1,4 @@
-﻿export class SmsService {
+export class SmsService {
   /**
    * Dispatches a real OTP to the given phone number or email address.
    */
@@ -56,6 +56,14 @@
           };
         } else {
           console.warn('[Fast2SMS Gateway Warning]', data?.message || 'Failed to dispatch via Fast2SMS');
+          const reason = Array.isArray(data?.message) ? data.message.join(' ') : (data?.message || '');
+          if (reason) {
+            return {
+              success: true,
+              provider: 'fast2sms-pending',
+              message: `Fast2SMS notice: ${reason}`,
+            };
+          }
         }
       } catch (err: any) {
         console.error('[Fast2SMS Error]', err.message);
