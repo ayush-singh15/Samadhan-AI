@@ -6,7 +6,11 @@ import { useAppStore } from '../store';
  * Base URL: VITE_API_BASE_URL env var, falls back to /api/v1 (Vite proxy → localhost:5000)
  */
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
+  baseURL:
+    import.meta.env.VITE_API_BASE_URL ||
+    (import.meta.env.PROD
+      ? 'https://trisetubackend-production.up.railway.app/api/v1'
+      : 'http://localhost:5000/api/v1'),
   headers: { 'Content-Type': 'application/json' },
 });
 
