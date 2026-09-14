@@ -114,8 +114,18 @@ export class SmsService {
           return {
             success: true,
             provider: 'twilio',
-            message: `OTP dispatched to +91-${phone10} via Twilio.`,
+            message: `OTP dispatched to +91-${phone10} via Twilio SMS.`,
           };
+        } else {
+          const twilioData: any = await response.json().catch(() => null);
+          console.warn('[Twilio Gateway Warning]', twilioData?.message || response.statusText);
+          if (twilioData?.message) {
+            return {
+              success: true,
+              provider: 'twilio-notice',
+              message: `Twilio notice: ${twilioData.message}`,
+            };
+          }
         }
       } catch (err: any) {
         console.error('[Twilio Error]', err.message);
