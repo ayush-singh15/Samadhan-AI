@@ -2,6 +2,7 @@ import { prisma } from '../../config/db.config';
 import { ProblemCategory, ProblemStatus } from '@prisma/client';
 import { matchingService } from './matching.service';
 import { notificationsService } from '../notifications/notifications.service';
+import { eventsService } from '../events/events.service';
 
 export class ProblemsService {
   async getAllProblems(filters?: { status?: string; category?: string }) {
@@ -43,7 +44,7 @@ export class ProblemsService {
     state: string;
     mediaUrls?: string[];
   }, userId: string) {
-    return prisma.problem.create({
+    const problem = await prisma.problem.create({
       data: {
         title:       data.title,
         description: data.description,
@@ -58,6 +59,15 @@ export class ProblemsService {
         status:      'SUBMITTED',
       },
     });
+
+    eventsService.broadcast({
+      type: 'PROBLEM_LOGGED',
+      title: 'New Civic Problem Reported',
+      message: `Citizen reported: "${problem.title}" in ${problem.district}, ${problem.state}.`,
+      payload: { id: problem.id, title: problem.title, district: problem.district },
+    });
+
+    return problem;
   }
 
   async updateStatus(id: string, status: string) {
@@ -78,6 +88,13 @@ export class ProblemsService {
       include: {
         assignedUniversity: true,
       },
+    });
+
+    eventsService.broadcast({
+      type: 'MANDATE_ASSIGNED',
+      title: 'R&D Mandate Dispatched',
+      message: `Zonal Admin assigned "${problem.title}" to ${problem.assignedUniversity?.name || 'Academic Lab'}.`,
+      payload: { problemId, universityId },
     });
 
     // Notify University Lead
@@ -139,6 +156,13 @@ export class ProblemsService {
         'FEEDBACK_RECORDED'
       ).catch(() => {});
     }
+
+    eventsService.broadcast({
+      type: 'SOCIAL_AUDIT_CERTIFIED',
+      title: 'Community Social Audit Verified',
+      message: `Citizen verified solution for "${problem.title}" with ${feedback.rating}/5 stars rating.`,
+      payload: { problemId, rating: feedback.rating, helped: feedback.helped },
+    });
 
     return feedback;
   }

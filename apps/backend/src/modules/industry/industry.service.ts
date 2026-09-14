@@ -1,5 +1,6 @@
 import { prisma } from '../../config/db.config';
 import { notificationsService } from '../notifications/notifications.service';
+import { eventsService } from '../events/events.service';
 
 export class IndustryService {
   async getIndustryPartners() {
@@ -104,6 +105,13 @@ export class IndustryService {
         'GRANT_ALLOCATED'
       ).catch(() => {});
     }
+
+    eventsService.broadcast({
+      type: 'GRANT_COMMITTED',
+      title: 'CSR Grant Committed in Escrow',
+      message: `${updatedIndustry.companyName} allocated ₹${(amount / 100000).toFixed(2)} Lakhs for "${project.title}".`,
+      payload: { projectId, amount, industryName: updatedIndustry.companyName },
+    });
 
     return offer;
   }

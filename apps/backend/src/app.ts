@@ -15,6 +15,7 @@ import industryRoutes from './modules/industry/industry.routes';
 import projectsRoutes from './modules/projects/projects.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
+import eventsRoutes from './modules/events/events.routes';
 
 const app: Application = express();
 
@@ -54,6 +55,7 @@ app.use(`${API_PREFIX}/industry`, industryRoutes);
 app.use(`${API_PREFIX}/projects`, projectsRoutes);
 app.use(`${API_PREFIX}/notifications`, notificationsRoutes);
 app.use(`${API_PREFIX}/analytics`, analyticsRoutes);
+app.use(`${API_PREFIX}/events`, eventsRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

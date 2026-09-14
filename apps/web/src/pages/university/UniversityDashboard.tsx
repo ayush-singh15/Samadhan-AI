@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { problemsApi } from '../../api/problems.api';
-import { mock_proposals, mock_projects } from '../../mocks';
-import type { Problem } from '../../types';
+import { projectsApi } from '../../api/projects.api';
+import type { Problem, Proposal, Project } from '../../types';
 
 const TABS = [
   { icon: 'travel_explore', label: '1. Open Civic Challenges' },
@@ -17,17 +17,34 @@ const UniversityDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [problems, setProblems] = useState<Problem[]>([]);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  const proposals = mock_proposals;
-  const projects = mock_projects;
+  const loadData = async () => {
+    try {
+      const [allProbs, allProps, allProjs] = await Promise.all([
+        problemsApi.getAll(),
+        projectsApi.getAllProposals(),
+        projectsApi.getAll(),
+      ]);
+      setProblems(allProbs.filter((p) => p.status === 'ASSIGNED_TO_UNIVERSITY' || p.assignedUniversityId));
+      setProposals(allProps);
+      setProjects(allProjs);
+    } catch (err) {
+      console.error('Failed to load university dashboard data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    problemsApi.getAll()
-      .then((all) => setProblems(all.filter((p) => p.status === 'ASSIGNED_TO_UNIVERSITY')))
-      .catch(() => setProblems([]))
-      .finally(() => setLoading(false));
+    loadData();
+
+    const handleTelemetry = () => loadData();
+    window.addEventListener('samadhan:telemetry', handleTelemetry);
+    return () => window.removeEventListener('samadhan:telemetry', handleTelemetry);
   }, []);
 
   const filtered = problems.filter((p) =>

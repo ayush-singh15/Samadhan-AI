@@ -1,83 +1,140 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { mock_projects } from '../../mocks';
+import { projectsApi } from '../../api/projects.api';
 import type { Project } from '../../types';
 
-// TODO: replace with real API call to GET /api/v1/projects when endpoint is built
-
 const ProjectList: React.FC = () => {
-  const projects: Project[] = mock_projects;
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const data = await projectsApi.getAll();
+      setProjects(data);
+    } catch (err) {
+      console.error('Failed to load projects', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+
+    const handleTelemetry = () => {
+      fetchProjects();
+    };
+    window.addEventListener('samadhan:telemetry', handleTelemetry);
+    return () => window.removeEventListener('samadhan:telemetry', handleTelemetry);
+  }, []);
 
   return (
-    <div style={s.page}>
-      <div style={s.pageHeader}>
-        <div style={s.inner}>
-          <h1 style={s.pageTitle}>Projects</h1>
-          <p style={s.pageSubtitle}>{projects.length} project{projects.length !== 1 ? 's' : ''}</p>
-        </div>
-      </div>
-
-      <div style={s.content}>
-        <div style={s.notice}>
-          <strong>⚠ Mock Data:</strong> Project list endpoint is not yet available in the backend. Showing demo data.
-        </div>
-
-        {projects.length === 0
-          ? <div style={s.empty}><p>No projects yet.</p></div>
-          : (
-            <div style={s.list}>
-              {projects.map((p) => {
-                const done = p.milestones.filter((m) => m.isCompleted).length;
-                const total = p.milestones.length;
-                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                return (
-                  <div key={p.id} style={s.card}>
-                    <div style={s.cardTop}>
-                      <div style={s.cardMain}>
-                        <h2 style={s.cardTitle}>{p.title}</h2>
-                        {p.problemTitle && <p style={s.cardSub}>Problem: {p.problemTitle}</p>}
-                        <p style={s.cardMeta}>Status: {p.status.replace(/_/g, ' ')} · Funded: ₹{(p.fundedAmount / 100000).toFixed(1)}L</p>
-                      </div>
-                    </div>
-                    <div style={s.progressRow}>
-                      <div style={s.progressBar}>
-                        <div style={{ ...s.progressFill, width: `${pct}%` }} />
-                      </div>
-                      <span style={s.progressText}>{done}/{total} milestones</span>
-                    </div>
-                    <Link to={`/university/projects/${p.id}/milestones`} style={s.cta}>View Milestones</Link>
-                  </div>
-                );
-              })}
+    <div className="p-space-lg max-w-7xl mx-auto space-y-space-lg">
+      {/* Header Horizon */}
+      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-space-lg shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary-container/20 text-primary mb-2">
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+              Academic R&D Operations Desk
             </div>
-          )
-        }
+            <h1 className="text-2xl font-black text-on-surface font-headline tracking-tight">
+              Active Civic Deployment Projects
+            </h1>
+            <p className="text-sm text-on-surface-variant mt-1">
+              Track multi-milestone physical deployments, material testing, and escrow disbursement status.
+            </p>
+          </div>
+          <div className="px-4 py-2 rounded-xl bg-surface-container-low border border-outline-variant/30 text-right">
+            <div className="text-xs text-on-surface-variant font-medium">Active Portfolio</div>
+            <div className="text-sm font-bold text-on-surface">{projects.length} Projects in Progress</div>
+          </div>
+        </div>
       </div>
+
+      {/* Projects Grid */}
+      {loading ? (
+        <div className="py-20 text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-on-surface-variant">Loading live university projects from Neon DB...</p>
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-12 text-center">
+          <span className="material-symbols-outlined text-4xl text-on-surface-variant/40 mb-2">folder_open</span>
+          <h3 className="text-base font-bold text-on-surface">No active deployment projects yet</h3>
+          <p className="text-xs text-on-surface-variant mt-1">
+            Proposals approved by Zonal Administration will appear here with active milestone tranches.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {projects.map((p) => {
+            const milestones = p.milestones || [];
+            const done = milestones.filter((m) => m.isCompleted).length;
+            const total = milestones.length || 3;
+            const pct = Math.round((done / total) * 100);
+            const budgetInLakhs = (p.fundedAmount / 100000).toFixed(2);
+            const probTitle = p.proposal?.problem?.title || (p as any).problemTitle || 'Civic Infrastructure';
+
+            return (
+              <div
+                key={p.id}
+                className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 flex flex-col justify-between hover:shadow-md transition-all space-y-5"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-surface-container text-on-surface-variant">
+                      {p.proposal?.problem?.category || 'CIVIC'}
+                    </span>
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary-container/20 text-primary">
+                      {p.status.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-black text-on-surface font-headline leading-snug">
+                    {p.title}
+                  </h3>
+
+                  <p className="text-xs text-on-surface-variant mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">location_on</span>
+                    Target: {probTitle}
+                  </p>
+
+                  <div className="mt-4 p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-on-surface-variant">Milestones Achieved: <strong>{done}/{total}</strong></span>
+                      <span className="font-bold text-primary">{pct}% Complete</span>
+                    </div>
+                    <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-on-surface-variant pt-1">
+                      <span>Funded Escrow: <strong className="text-on-surface">₹{budgetInLakhs}L</strong></span>
+                      <span>Smart Tranche Release</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Link
+                    to={`/university/projects/${p.id}/milestones`}
+                    className="w-full py-2.5 px-4 rounded-xl bg-primary text-on-primary font-semibold text-xs flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-xs"
+                  >
+                    <span className="material-symbols-outlined text-sm">trending_up</span>
+                    Manage & Certify Milestones
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
-};
-
-const s: Record<string, React.CSSProperties> = {
-  page: { fontFamily: 'Inter, system-ui, sans-serif', color: '#111827', minHeight: '100%' },
-  pageHeader: { background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '1.5rem' },
-  inner: { maxWidth: '1100px', margin: '0 auto' },
-  pageTitle: { fontSize: '1.375rem', fontWeight: 700, marginBottom: '0.25rem', letterSpacing: '-0.01em' },
-  pageSubtitle: { fontSize: '0.875rem', color: '#6b7280' },
-  content: { maxWidth: '1100px', margin: '0 auto', padding: '2rem 1.5rem' },
-  notice: { background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '4px', padding: '0.875rem 1rem', fontSize: '0.875rem', color: '#92400e', marginBottom: '1.5rem', lineHeight: 1.5 },
-  list: { display: 'flex', flexDirection: 'column' as const, gap: '1rem' },
-  card: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '1.5rem' },
-  cardTop: { display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' as const },
-  cardMain: { flex: 1 },
-  cardTitle: { fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem', color: '#111827' },
-  cardSub: { fontSize: '0.8125rem', color: '#374151', marginBottom: '0.125rem' },
-  cardMeta: { fontSize: '0.8125rem', color: '#6b7280' },
-  progressRow: { display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' },
-  progressBar: { flex: 1, height: '6px', background: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' },
-  progressFill: { height: '100%', background: '#1d4ed8', borderRadius: '3px' },
-  progressText: { fontSize: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' as const },
-  cta: { display: 'inline-block', padding: '0.5rem 1rem', background: '#1d4ed8', color: '#fff', textDecoration: 'none', borderRadius: '3px', fontSize: '0.875rem', fontWeight: 600 },
-  empty: { textAlign: 'center' as const, padding: '3rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '4px', color: '#6b7280' },
 };
 
 export default ProjectList;

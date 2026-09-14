@@ -1,5 +1,6 @@
 import { prisma } from '../../config/db.config';
 import { notificationsService } from '../notifications/notifications.service';
+import { eventsService } from '../events/events.service';
 
 export class ProjectsService {
   async getAll() {
@@ -102,6 +103,13 @@ export class ProjectsService {
       ).catch(() => {});
     }
 
+    eventsService.broadcast({
+      type: 'PROPOSAL_SUBMITTED',
+      title: 'Academic Feasibility Proposal Logged',
+      message: `${proposal.university.name} submitted proposal for "${proposal.problem?.title || proposal.title}".`,
+      payload: { proposalId: proposal.id, budget: proposal.budgetRequired },
+    });
+
     return proposal;
   }
 
@@ -187,6 +195,13 @@ export class ProjectsService {
           'PROPOSAL_APPROVED'
         ).catch(() => {});
       }
+
+      eventsService.broadcast({
+        type: 'PROPOSAL_APPROVED',
+        title: 'Project Initiated & Escrow Tranches Unlocked',
+        message: `Admin approved proposal "${proposal.title}". 3 milestone tranches active for ${proposal.university.name}.`,
+        payload: { proposalId: proposal.id },
+      });
     }
 
     return proposal;
@@ -197,6 +212,15 @@ export class ProjectsService {
       where: { id: milestoneId },
       data: { isCompleted },
     });
+
+    if (isCompleted) {
+      eventsService.broadcast({
+        type: 'MILESTONE_COMPLETED',
+        title: 'Milestone Tranche Completed',
+        message: `Milestone "${updatedMs.title}" verified and certified.`,
+        payload: { projectId, milestoneId },
+      });
+    }
 
     // Check if all milestones for this project are now completed
     const allMilestones = await prisma.milestone.findMany({ where: { projectId } });
