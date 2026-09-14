@@ -86,6 +86,33 @@ export class ProblemsController {
       return sendResponse(res, 500, false, err.message);
     }
   }
+
+  async submitFeedback(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { rating, helped, comment } = req.body;
+      if (rating === undefined || helped === undefined) {
+        return sendResponse(res, 400, false, 'rating and helped are required');
+      }
+      const userId = req.user?.id;
+      const feedback = await problemsService.submitFeedback(
+        req.params.id,
+        { rating: Number(rating), helped: Boolean(helped), comment },
+        userId
+      );
+      return sendResponse(res, 201, true, 'Social audit feedback recorded successfully', feedback);
+    } catch (err: any) {
+      return sendResponse(res, 400, false, err.message);
+    }
+  }
+
+  async getFeedback(req: Request, res: Response) {
+    try {
+      const list = await problemsService.getFeedback(req.params.id);
+      return sendResponse(res, 200, true, 'Feedback records retrieved', list);
+    } catch (err: any) {
+      return sendResponse(res, 500, false, err.message);
+    }
+  }
 }
 
 export const problemsController = new ProblemsController();

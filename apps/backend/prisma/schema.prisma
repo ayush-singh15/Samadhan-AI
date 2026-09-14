@@ -73,6 +73,7 @@ model Problem {
   assignedUniversityId String?
   assignedUniversity   UniversityProfile? @relation(fields: [assignedUniversityId], references: [id])
   proposals            Proposal[]
+  feedback             CitizenFeedback[]
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 }
@@ -173,3 +174,15 @@ model Notification {
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
+
+model CitizenFeedback {
+  id        String   @id @default(uuid())
+  problemId String
+  problem   Problem  @relation(fields: [problemId], references: [id])
+  userId    String?
+  rating    Int
+  helped    Boolean  @default(true)
+  comment   String?
+  createdAt DateTime @default(now())
+}
+

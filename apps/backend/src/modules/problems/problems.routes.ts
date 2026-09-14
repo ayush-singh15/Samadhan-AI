@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { problemsController } from './problems.controller';
-import { authenticateJWT } from '../../middlewares/auth.middleware';
+import { authenticateJWT, optionalAuthenticate } from '../../middlewares/auth.middleware';
 import { uploadMiddleware } from '../../middlewares/upload.middleware';
 
 const router = Router();
@@ -10,6 +10,7 @@ router.get('/',            (req, res) => problemsController.getAllProblems(req, 
 router.get('/mine',        authenticateJWT, (req, res) => problemsController.getMyProblems(req, res));
 router.get('/:id',         (req, res) => problemsController.getProblemById(req, res));
 router.get('/:id/matches', (req, res) => problemsController.getMatches(req, res));
+router.get('/:id/feedback', (req, res) => problemsController.getFeedback(req, res));
 
 // Protected / Mutate
 router.post(
@@ -20,5 +21,6 @@ router.post(
 );
 router.patch('/:id/status', authenticateJWT, (req, res) => problemsController.updateStatus(req, res));
 router.post('/:id/assign',  authenticateJWT, (req, res) => problemsController.assignUniversity(req, res));
+router.post('/:id/feedback', optionalAuthenticate, (req, res) => problemsController.submitFeedback(req, res));
 
 export default router;

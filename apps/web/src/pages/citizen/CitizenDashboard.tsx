@@ -227,10 +227,10 @@ const CitizenDashboard: React.FC = () => {
                     <span className="material-symbols-outlined text-[16px]">photo_library</span>
                     View Site Photos
                   </Link>
-                  {p.status === 'RESOLVED' && (
+                  {['RESOLVED', 'IN_PROGRESS'].includes(p.status) && (
                     <Link to={`/citizen/feedback/${p.id}`} className="px-space-md py-1.5 rounded-lg border border-primary text-primary font-label-lg text-label-lg flex items-center gap-1.5 hover:bg-primary/5 transition-colors">
-                      <span className="material-symbols-outlined text-[16px]">feedback</span>
-                      Provide Citizen Feedback
+                      <span className="material-symbols-outlined text-[16px]">verified</span>
+                      Citizen Social Audit
                     </Link>
                   )}
                   <Link to={`/citizen/problems/${p.id}`} className="px-space-md py-1.5 rounded-lg bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-1.5 hover:bg-primary-container transition-colors">

@@ -105,4 +105,21 @@ export const problemsApi = {
     if (!data.success) throw new Error(data.message);
     return data.data;
   },
+
+  /** POST /api/v1/problems/:id/feedback — Submit citizen social audit feedback */
+  async submitFeedback(problemId: string, payload: { rating: number; helped: boolean; comment?: string }): Promise<any> {
+    const { data } = await api.post<ApiEnvelope<any>>(`/problems/${problemId}/feedback`, payload);
+    if (!data.success) throw new Error(data.message);
+    return data.data;
+  },
+
+  /** GET /api/v1/problems/:id/feedback — Get citizen feedback records */
+  async getFeedback(problemId: string): Promise<any[]> {
+    try {
+      const { data } = await api.get<ApiEnvelope<any[]>>(`/problems/${problemId}/feedback`);
+      return data.success ? data.data : [];
+    } catch {
+      return [];
+    }
+  },
 };

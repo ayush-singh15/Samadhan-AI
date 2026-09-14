@@ -25,6 +25,7 @@ export class ProblemsService {
         submittedBy:        { select: { id: true, name: true, email: true } },
         assignedUniversity: { select: { id: true, name: true, code: true, department: true } },
         proposals:          { include: { university: { select: { id: true, name: true } } } },
+        feedback:           { orderBy: { createdAt: 'desc' } },
       },
     });
     if (!problem) throw new Error('Problem not found');
@@ -105,6 +106,46 @@ export class ProblemsService {
   async getMyProblems(userId: string) {
     return prisma.problem.findMany({
       where:   { submittedById: userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async submitFeedback(problemId: string, data: { rating: number; helped: boolean; comment?: string }, userId?: string) {
+    const problem = await prisma.problem.findUnique({ where: { id: problemId } });
+    if (!problem) throw new Error('Problem not found');
+
+    const feedback = await prisma.citizenFeedback.create({
+      data: {
+        problemId,
+        userId: userId || null,
+        rating: Math.min(5, Math.max(1, Math.round(data.rating))),
+        helped: Boolean(data.helped),
+        comment: data.comment || null,
+      },
+    });
+
+    if (data.helped && problem.status === 'IN_PROGRESS') {
+      await prisma.problem.update({
+        where: { id: problemId },
+        data: { status: 'RESOLVED' },
+      });
+    }
+
+    if (problem.submittedById) {
+      await notificationsService.sendTriggerNotification(
+        problem.submittedById,
+        'Citizen Feedback Recorded',
+        `Social audit feedback received for "${problem.title}". Rating: ${feedback.rating}/5 stars.`,
+        'FEEDBACK_RECORDED'
+      ).catch(() => {});
+    }
+
+    return feedback;
+  }
+
+  async getFeedback(problemId: string) {
+    return prisma.citizenFeedback.findMany({
+      where: { problemId },
       orderBy: { createdAt: 'desc' },
     });
   }
