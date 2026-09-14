@@ -21,6 +21,20 @@ const verifyToken = (req: AuthenticatedRequest, res: Response, next: NextFunctio
   }
 };
 
-// Export both names so all existing route files work without changes
 export const authenticate    = verifyToken;
 export const authenticateJWT = verifyToken;
+
+export const optionalAuthenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, env.JWT_SECRET) as { id: string; email: string; role: string };
+      req.user = decoded;
+    } catch {
+      // Ignore token failure for optional routes
+    }
+  }
+  next();
+};
+

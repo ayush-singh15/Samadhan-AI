@@ -46,6 +46,16 @@ export class IndustryController {
       return sendResponse(res, 400, false, err.message);
     }
   }
+
+  async getDashboard(req: AuthenticatedRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const data = await industryService.getDashboardMetrics(userId);
+      return sendResponse(res, 200, true, 'Industry dashboard data retrieved', data);
+    } catch (err: any) {
+      return sendResponse(res, 500, false, err.message);
+    }
+  }
 }
 
 export const industryController = new IndustryController();
