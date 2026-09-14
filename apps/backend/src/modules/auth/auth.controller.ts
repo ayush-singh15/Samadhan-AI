@@ -32,11 +32,11 @@ export class AuthController {
 
   async sendOtp(req: Request, res: Response) {
     try {
-      const { identifier, role } = req.body;
+      const { identifier, role, name } = req.body;
       if (!identifier || typeof identifier !== 'string' || identifier.trim().length < 4) {
         return sendResponse(res, 400, false, 'Valid mobile number or email address is required');
       }
-      const result = await otpService.sendOtp(identifier.trim(), role);
+      const result = await otpService.sendOtp(identifier.trim(), role, name);
       return sendResponse(res, 200, true, result.message, result);
     } catch (err: any) {
       return sendResponse(res, 400, false, err.message);
@@ -45,11 +45,11 @@ export class AuthController {
 
   async verifyOtp(req: Request, res: Response) {
     try {
-      const { identifier, otp } = req.body;
+      const { identifier, otp, name } = req.body;
       if (!identifier || !otp) {
         return sendResponse(res, 400, false, 'Both identifier and 6-digit OTP are required');
       }
-      const result = await otpService.verifyOtp(identifier.trim(), otp.trim());
+      const result = await otpService.verifyOtp(identifier.trim(), otp.trim(), name);
       return sendResponse(res, 200, true, 'OTP verified successfully. Authenticated.', result);
     } catch (err: any) {
       return sendResponse(res, 400, false, err.message);

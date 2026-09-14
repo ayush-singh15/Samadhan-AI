@@ -1,8 +1,9 @@
-﻿import crypto from 'crypto';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../config/db.config';
 import { env } from '../../config/env.config';
+import { smsService } from './sms.service';
 
 interface OtpRecord {
   identifier: string;
@@ -10,6 +11,7 @@ interface OtpRecord {
   expiresAt: number;
   attempts: number;
   requestedRole?: string;
+  name?: string;
 }
 
 // In-memory store for active OTPs and rate limits
@@ -18,9 +20,9 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 export class OtpService {
   /**
-   * Generates and dispatches a cryptographically secure 6-digit OTP.
+   * Generates and dispatches a cryptographically secure 6-digit OTP via real SMS/Email.
    */
-  async sendOtp(identifier: string, requestedRole?: string) {
+  async sendOtp(identifier: string, requestedRole?: string, name?: string) {
     const cleanId = identifier.trim().toLowerCase();
 
     // 1. Rate Limiting Check (Max 3 OTP requests per 10 minutes)
@@ -52,22 +54,26 @@ export class OtpService {
       expiresAt,
       attempts: 0,
       requestedRole: requestedRole || 'CITIZEN',
+      name: name?.trim() || undefined,
     });
 
-    console.log(`[OTP Engine] Generated OTP for ${cleanId}: ${rawOtp} (Expires in 5m)`);
+    // 4. Dispatch OTP through real carrier SMS or Email gateway
+    const smsDispatch = await smsService.sendOtp(cleanId, rawOtp);
 
+    console.log(`[OTP Gateway] OTP dispatched successfully to ${cleanId} via ${smsDispatch.provider}`);
+
+    // Return clean response to client — NEVER leak rawOtp on screen!
     return {
       success: true,
-      message: `OTP sent successfully to ${cleanId}. Valid for 5 minutes.`,
-      otpPreview: rawOtp,
+      message: smsDispatch.message || `OTP sent successfully to ${cleanId}. Valid for 5 minutes.`,
       expiresInSeconds: 300,
     };
   }
 
   /**
-   * Verifies the 6-digit OTP and generates a JWT session.
+   * Verifies the 6-digit OTP and generates a JWT session with user personalization.
    */
-  async verifyOtp(identifier: string, otp: string) {
+  async verifyOtp(identifier: string, otp: string, name?: string) {
     const cleanId = identifier.trim().toLowerCase();
     const record = otpStore.get(cleanId);
 
@@ -92,6 +98,10 @@ export class OtpService {
       throw new Error(`Invalid OTP. ${remaining} attempt(s) remaining.`);
     }
 
+    // Preserve metadata before clearing record
+    const savedRole = record.requestedRole;
+    const preferredName = name?.trim() || record.name?.trim();
+
     // OTP is valid — clear record
     otpStore.delete(cleanId);
 
@@ -110,16 +120,23 @@ export class OtpService {
       const defaultEmail = isEmail ? cleanId : `${cleanId}@citizen.samadhan.gov.in`;
       const defaultPhone = isEmail ? undefined : cleanId;
       const placeholderPass = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
+      const resolvedName = preferredName || (isEmail ? cleanId.split('@')[0] : `Citizen ${cleanId.slice(-4)}`);
 
       user = await prisma.user.create({
         data: {
           email: defaultEmail,
           phone: defaultPhone,
-          name: isEmail ? cleanId.split('@')[0] : `Citizen ${cleanId.slice(-4)}`,
-          role: (record.requestedRole as any) || 'CITIZEN',
+          name: resolvedName,
+          role: (savedRole as any) || 'CITIZEN',
           passwordHash: placeholderPass,
           isVerified: true,
         },
+      });
+    } else if (preferredName && (user.name.startsWith('Citizen ') || user.name === user.email.split('@')[0] || preferredName !== user.name)) {
+      // Update user's name if they provided a personalization name (e.g. Ayush Singh)
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { name: preferredName },
       });
     }
 

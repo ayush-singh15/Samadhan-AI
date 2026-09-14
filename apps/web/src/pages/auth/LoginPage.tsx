@@ -31,10 +31,10 @@ const LoginPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'otp' | 'demo' | 'password'>('otp');
 
   // OTP State
+  const [fullName, setFullName] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [otpPreview, setOtpPreview] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
 
   // Password Login State
@@ -65,12 +65,9 @@ const LoginPage: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const res = await authApi.sendOtp(identifier.trim(), 'CITIZEN');
+      const res = await authApi.sendOtp(identifier.trim(), 'CITIZEN', fullName.trim());
       setOtpSent(true);
       setSuccessMsg(res.message);
-      if (res.otpPreview) {
-        setOtpPreview(res.otpPreview);
-      }
       setCountdown(60); // 60s cooldown
     } catch (err) {
       setError(getErrorMessage(err));
@@ -83,13 +80,13 @@ const LoginPage: React.FC = () => {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp.trim() || otp.trim().length !== 6) {
-      setError('Please enter the 6-digit OTP received.');
+      setError('Please enter the 6-digit verification code received.');
       return;
     }
     setError(null);
     setLoading(true);
     try {
-      const { user, token } = await authApi.verifyOtp(identifier.trim(), otp.trim());
+      const { user, token } = await authApi.verifyOtp(identifier.trim(), otp.trim(), fullName.trim());
       setUser(user, token);
       redirect((user.role as UserRole) || 'CITIZEN');
     } catch (err) {
@@ -223,6 +220,25 @@ const LoginPage: React.FC = () => {
                 <form onSubmit={handleSendOtp} className="flex flex-col gap-space-md">
                   <div>
                     <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
+                      Your Full Name
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined text-[20px]">
+                        person
+                      </span>
+                      <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="e.g. Ayush Singh"
+                        required
+                        className="w-full pl-11 pr-space-md py-3 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
                       Mobile Number or Official Email
                     </label>
                     <div className="relative">
@@ -239,36 +255,30 @@ const LoginPage: React.FC = () => {
                       />
                     </div>
                     <p className="font-body-xs text-body-xs text-on-surface-variant mt-1.5">
-                      We will send a cryptographically secure 6-digit OTP valid for 5 minutes.
+                      A real 6-digit OTP will be dispatched via SMS to your mobile phone.
                     </p>
                   </div>
 
                   <button
                     type="submit"
-                    disabled={loading || !identifier.trim()}
+                    disabled={loading || !identifier.trim() || !fullName.trim()}
                     className="w-full py-3.5 rounded-xl bg-primary text-on-primary font-headline-sm hover:bg-primary-container transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {loading && <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>}
-                    {loading ? 'Generating OTP…' : 'Send 6-Digit OTP'}
+                    {loading ? 'Sending SMS OTP…' : 'Send 6-Digit OTP via SMS'}
                   </button>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp} className="flex flex-col gap-space-md">
-                  {otpPreview && (
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-900 dark:text-amber-200 text-sm flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-amber-600 text-[18px]">lock</span>
-                        Security OTP Preview: <strong className="tracking-widest font-mono text-base">{otpPreview}</strong>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setOtp(otpPreview)}
-                        className="px-2 py-0.5 text-xs bg-amber-600 text-white rounded font-medium hover:bg-amber-700"
-                      >
-                        Autofill
-                      </button>
+                  <div className="p-3.5 bg-primary/10 border border-primary/20 rounded-xl text-primary text-sm flex items-center gap-2.5">
+                    <span className="material-symbols-outlined text-primary text-[22px]">sms</span>
+                    <div>
+                      <p className="font-semibold text-on-surface">SMS Verification Dispatched</p>
+                      <p className="text-xs text-on-surface-variant">
+                        Code sent to <strong>{identifier}</strong> for <strong>{fullName || 'Citizen'}</strong>. Check your phone's SMS.
+                      </p>
                     </div>
-                  )}
+                  </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1.5">

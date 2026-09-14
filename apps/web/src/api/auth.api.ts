@@ -61,15 +61,15 @@ export const authApi = {
   },
 
   /** POST /api/v1/auth/send-otp */
-  async sendOtp(identifier: string, role?: string): Promise<SendOtpResult> {
-    const { data } = await api.post<ApiEnvelope<SendOtpResult>>('/auth/send-otp', { identifier, role });
+  async sendOtp(identifier: string, role?: string, name?: string): Promise<SendOtpResult> {
+    const { data } = await api.post<ApiEnvelope<SendOtpResult>>('/auth/send-otp', { identifier, role, name });
     if (!data.success) throw new Error(data.message);
     return data.data;
   },
 
   /** POST /api/v1/auth/verify-otp */
-  async verifyOtp(identifier: string, otp: string): Promise<VerifyOtpResult> {
-    const { data } = await api.post<ApiEnvelope<VerifyOtpResult>>('/auth/verify-otp', { identifier, otp });
+  async verifyOtp(identifier: string, otp: string, name?: string): Promise<VerifyOtpResult> {
+    const { data } = await api.post<ApiEnvelope<VerifyOtpResult>>('/auth/verify-otp', { identifier, otp, name });
     if (!data.success) throw new Error(data.message);
     return data.data;
   },
