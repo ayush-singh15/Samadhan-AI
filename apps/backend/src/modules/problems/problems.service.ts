@@ -4,12 +4,72 @@ import { matchingService } from './matching.service';
 import { notificationsService } from '../notifications/notifications.service';
 import { eventsService } from '../events/events.service';
 
+export function computeAiThreatAnalysis(title: string, description: string, category?: string) {
+  const text = `${title} ${description}`.toLowerCase();
+
+  // Category base weighting
+  let baseScore = 20;
+  if (category === 'HEALTHCARE') baseScore = 35;
+  else if (category === 'WATER_SANITATION') baseScore = 32;
+  else if (category === 'INFRASTRUCTURE') baseScore = 28;
+  else if (category === 'AGRICULTURE') baseScore = 24;
+  else if (category === 'ENERGY') baseScore = 22;
+
+  // Urgency & hazard keyword detection
+  const urgentKeywords = [
+    'urgent', 'danger', 'hazardous', 'collapse', 'contamination', 'hospital',
+    'children', 'fatal', 'accident', 'overflow', 'poison', 'emergency',
+    'broken', 'electricity shock', 'flooding', 'fire'
+  ];
+  let urgencyBonus = 0;
+  urgentKeywords.forEach((k) => {
+    if (text.includes(k)) urgencyBonus += 8;
+  });
+  urgencyBonus = Math.min(urgencyBonus, 40);
+
+  // Impact scope factor
+  const scopeKeywords = ['ward', 'village', 'colony', 'thousands', 'entire area', 'months', 'daily', 'school'];
+  let scopeBonus = 0;
+  scopeKeywords.forEach((k) => {
+    if (text.includes(k)) scopeBonus += 7;
+  });
+  scopeBonus = Math.min(scopeBonus, 25);
+
+  const severityScore = Math.min(100, Math.max(15, baseScore + urgencyBonus + scopeBonus));
+
+  // AI Technical Domain extraction
+  const domains: string[] = [];
+  if (/water|contaminat|sewage|drain|pipe|tank/i.test(text)) domains.push('Hydraulic & Water Treatment');
+  if (/road|bridge|pothole|structural|concrete|building|crack/i.test(text)) domains.push('Civil Structural Engineering');
+  if (/electric|wire|transformer|voltage|power|grid/i.test(text)) domains.push('Electrical Grid & Power Systems');
+  if (/crop|pest|soil|farm|irrigation|harvest/i.test(text)) domains.push('Agritech & Soil Dynamics');
+  if (/waste|plastic|garbage|dump|sanitation/i.test(text)) domains.push('Solid Waste Environmental Eng.');
+  if (/sensor|iot|camera|automate|monitor/i.test(text)) domains.push('Embedded IoT Telemetry');
+  if (domains.length === 0) domains.push('Municipal Public Works');
+
+  return { severityScore, technicalDomains: domains };
+}
+
 export class ProblemsService {
-  async getAllProblems(filters?: { status?: string; category?: string }) {
-    return prisma.problem.findMany({
+  async getAllProblems(filters?: {
+    status?: string;
+    category?: string;
+    district?: string;
+    search?: string;
+    minSeverity?: number;
+  }) {
+    const problems = await prisma.problem.findMany({
       where: {
         ...(filters?.status   && { status:   filters.status   as ProblemStatus }),
         ...(filters?.category && { category: filters.category as ProblemCategory }),
+        ...(filters?.district && { district: { contains: filters.district, mode: 'insensitive' } }),
+        ...(filters?.search && {
+          OR: [
+            { title:       { contains: filters.search, mode: 'insensitive' } },
+            { description: { contains: filters.search, mode: 'insensitive' } },
+            { address:     { contains: filters.search, mode: 'insensitive' } },
+          ],
+        }),
       },
       include: {
         submittedBy:        { select: { id: true, name: true, email: true } },
@@ -17,6 +77,22 @@ export class ProblemsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    // Enrich with computed AI Threat analysis
+    const enriched = problems.map((p) => {
+      const ai = computeAiThreatAnalysis(p.title, p.description, p.category);
+      return {
+        ...p,
+        aiSeverity: ai.severityScore,
+        technicalDomains: ai.technicalDomains,
+      };
+    });
+
+    if (filters?.minSeverity) {
+      return enriched.filter((p) => p.aiSeverity >= (filters.minSeverity || 0));
+    }
+
+    return enriched;
   }
 
   async getProblemById(id: string) {
@@ -30,7 +106,13 @@ export class ProblemsService {
       },
     });
     if (!problem) throw new Error('Problem not found');
-    return problem;
+
+    const ai = computeAiThreatAnalysis(problem.title, problem.description, problem.category);
+    return {
+      ...problem,
+      aiSeverity: ai.severityScore,
+      technicalDomains: ai.technicalDomains,
+    };
   }
 
   async createProblem(data: {
@@ -60,14 +142,26 @@ export class ProblemsService {
       },
     });
 
+    const ai = computeAiThreatAnalysis(problem.title, problem.description, problem.category);
+
     eventsService.broadcast({
       type: 'PROBLEM_LOGGED',
       title: 'New Civic Problem Reported',
-      message: `Citizen reported: "${problem.title}" in ${problem.district}, ${problem.state}.`,
-      payload: { id: problem.id, title: problem.title, district: problem.district },
+      message: `Citizen reported: "${problem.title}" in ${problem.district}, ${problem.state} (Threat Index: ${ai.severityScore}/100).`,
+      payload: {
+        id: problem.id,
+        title: problem.title,
+        district: problem.district,
+        aiSeverity: ai.severityScore,
+        technicalDomains: ai.technicalDomains,
+      },
     });
 
-    return problem;
+    return {
+      ...problem,
+      aiSeverity: ai.severityScore,
+      technicalDomains: ai.technicalDomains,
+    };
   }
 
   async updateStatus(id: string, status: string) {

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { authService } from './auth.service';
+import { otpService } from './otp.service';
 import { sendResponse } from '../../utils/response';
 
 export class AuthController {
@@ -26,6 +27,32 @@ export class AuthController {
       return sendResponse(res, 200, true, 'Login successful', result);
     } catch (err: any) {
       return sendResponse(res, 401, false, err.message);
+    }
+  }
+
+  async sendOtp(req: Request, res: Response) {
+    try {
+      const { identifier, role } = req.body;
+      if (!identifier || typeof identifier !== 'string' || identifier.trim().length < 4) {
+        return sendResponse(res, 400, false, 'Valid mobile number or email address is required');
+      }
+      const result = await otpService.sendOtp(identifier.trim(), role);
+      return sendResponse(res, 200, true, result.message, result);
+    } catch (err: any) {
+      return sendResponse(res, 400, false, err.message);
+    }
+  }
+
+  async verifyOtp(req: Request, res: Response) {
+    try {
+      const { identifier, otp } = req.body;
+      if (!identifier || !otp) {
+        return sendResponse(res, 400, false, 'Both identifier and 6-digit OTP are required');
+      }
+      const result = await otpService.verifyOtp(identifier.trim(), otp.trim());
+      return sendResponse(res, 200, true, 'OTP verified successfully. Authenticated.', result);
+    } catch (err: any) {
+      return sendResponse(res, 400, false, err.message);
     }
   }
 

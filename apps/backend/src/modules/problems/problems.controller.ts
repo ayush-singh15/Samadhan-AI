@@ -6,10 +6,13 @@ import { sendResponse } from '../../utils/response';
 export class ProblemsController {
   async getAllProblems(req: Request, res: Response) {
     try {
-      const { status, category } = req.query;
+      const { status, category, district, search, minSeverity } = req.query;
       const problems = await problemsService.getAllProblems({
-        status:   status   as string | undefined,
-        category: category as string | undefined,
+        status:      status      as string | undefined,
+        category:    category    as string | undefined,
+        district:    district    as string | undefined,
+        search:      search      as string | undefined,
+        minSeverity: minSeverity ? parseInt(minSeverity as string, 10) : undefined,
       });
       return sendResponse(res, 200, true, 'Problems fetched successfully', problems);
     } catch (err: any) {
@@ -40,12 +43,29 @@ export class ProblemsController {
       const userId = req.user?.id;
       if (!userId) return sendResponse(res, 401, false, 'Unauthorized');
 
-      const mediaUrls = req.files
-        ? (req.files as Express.Multer.File[]).map((f) => `/uploads/${f.filename}`)
-        : req.body.mediaUrls || [];
+      const uploadedFiles = req.files ? (req.files as Express.Multer.File[]) : [];
+      const fileUrls = uploadedFiles.map((f) => `/uploads/${f.filename}`);
+
+      let existingMedia: string[] = [];
+      if (req.body.mediaUrls) {
+        existingMedia = Array.isArray(req.body.mediaUrls)
+          ? req.body.mediaUrls
+          : [req.body.mediaUrls];
+      }
+      const combinedMedia = [...fileUrls, ...existingMedia];
 
       const problem = await problemsService.createProblem(
-        { ...req.body, mediaUrls },
+        {
+          title: req.body.title,
+          description: req.body.description,
+          category: req.body.category,
+          address: req.body.address,
+          district: req.body.district,
+          state: req.body.state,
+          latitude: parseFloat(req.body.latitude) || 0,
+          longitude: parseFloat(req.body.longitude) || 0,
+          mediaUrls: combinedMedia,
+        },
         userId
       );
       return sendResponse(res, 201, true, 'Problem submitted successfully', problem);

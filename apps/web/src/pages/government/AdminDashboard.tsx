@@ -13,6 +13,8 @@ const AdminDashboard: React.FC = () => {
   const [matches, setMatches] = useState<UniversityMatch[]>([]);
   const [matchingLoading, setMatchingLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [severityFilter, setSeverityFilter] = useState<'ALL' | 'CRITICAL' | 'MODERATE' | 'STANDARD'>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadProblems = async () => {
     try {
@@ -76,6 +78,20 @@ const AdminDashboard: React.FC = () => {
 
   const topMatch = matches[0];
 
+  const filteredProblems = problems.filter((p) => {
+    const score = p.aiSeverity ?? (p.status === 'SUBMITTED' ? 75 : 45);
+    if (severityFilter === 'CRITICAL' && score < 75) return false;
+    if (severityFilter === 'MODERATE' && (score < 40 || score >= 75)) return false;
+    if (severityFilter === 'STANDARD' && score >= 40) return false;
+
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      const matchText = `${p.title} ${p.description} ${p.district} ${p.state} ${p.category}`.toLowerCase();
+      if (!matchText.includes(q)) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="flex flex-col w-full gap-space-xl">
 
@@ -135,21 +151,55 @@ const AdminDashboard: React.FC = () => {
           { icon: 'psychology', label: 'AI Pre-Screened', val: String(aiMatched), sub: 'Ready for triage', color: 'text-primary' },
           { icon: 'school', label: 'Active University Deployments', val: String(active), sub: 'Research underway', color: 'text-primary' },
           { icon: 'speed', label: 'Avg Resolution Speed', val: '14.2 Days', sub: 'Target: 21 days', color: 'text-primary', progress: 68 },
-        ].map(({ icon, label, val, sub, color, border, progress }, i) => (
+        ].map(({ icon, label, val, sub, color, border }, i) => (
           <div key={i} className={`bg-surface-container-lowest rounded-xl p-space-md shadow-xs flex flex-col justify-between ${border || ''}`}>
             <div className="flex items-center justify-between mb-space-xs">
               <span className="font-label-caps text-label-caps text-on-surface-variant uppercase text-[10px] leading-tight">{label}</span>
-              <span className={`material-symbols-outlined text-[20px] ${color}`}>{icon}</span>
+              <span className={`material-symbols-outlined text-[18px] ${color}`}>{icon}</span>
             </div>
-            <p className="font-headline-lg text-headline-lg text-on-surface my-1">{val}</p>
+            <p className="font-headline-lg text-headline-lg font-bold">{val}</p>
             <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px]">{sub}</p>
-            {progress !== undefined && (
-              <div className="mt-1 w-full bg-surface-container-high rounded-full h-1">
-                <div className="bg-primary h-1 rounded-full" style={{ width: `${progress}%` }} />
-              </div>
-            )}
           </div>
         ))}
+      </section>
+
+      {/* ─── AI Search & Filtering Controls ──────────────────────────────── */}
+      <section className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-space-md shadow-xs flex flex-col md:flex-row items-center justify-between gap-space-md">
+        {/* Search input */}
+        <div className="relative w-full md:w-80">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-[18px]">
+            search
+          </span>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search problems, wards, or sectors…"
+            className="w-full pl-9 pr-space-md py-2 rounded-xl border border-outline-variant bg-surface font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary text-xs"
+          />
+        </div>
+
+        {/* AI Severity Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto">
+          <span className="text-xs font-semibold text-on-surface-variant uppercase mr-1">AI Triage:</span>
+          {(['ALL', 'CRITICAL', 'MODERATE', 'STANDARD'] as const).map((lvl) => (
+            <button
+              key={lvl}
+              onClick={() => setSeverityFilter(lvl)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                severityFilter === lvl
+                  ? lvl === 'CRITICAL'
+                    ? 'bg-error text-on-error shadow-xs'
+                    : lvl === 'MODERATE'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-primary text-on-primary shadow-xs'
+                  : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+              }`}
+            >
+              {lvl === 'ALL' ? 'All Reports' : lvl === 'CRITICAL' ? '⚡ Critical (≥75)' : lvl === 'MODERATE' ? '⚠️ Moderate' : 'Standard'}
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* ─── Main Content Area ──────────────────────────────────────────── */}
@@ -162,12 +212,12 @@ const AdminDashboard: React.FC = () => {
               <span className="material-symbols-outlined text-4xl text-outline-variant block mb-2 animate-pulse">pending</span>
               <p className="font-body-md text-body-md text-on-surface-variant">Loading civic reports…</p>
             </div>
-          ) : problems.length === 0 ? (
+          ) : filteredProblems.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-xl p-space-xl text-center">
-              <p className="font-body-md text-body-md text-on-surface-variant">No problems to review.</p>
+              <p className="font-body-md text-body-md text-on-surface-variant">No matching civic reports found.</p>
             </div>
           ) : (
-            problems.map((p) => (
+            filteredProblems.map((p: Problem) => (
               <div
                 key={p.id}
                 onClick={() => setSelectedProblem(p)}
@@ -192,11 +242,20 @@ const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-space-xs mb-space-sm">
-                    {p.status === 'SUBMITTED' && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-error-container text-on-error-container font-label-md text-label-md font-semibold text-[11px]">
-                        URGENT PRIORITY
-                      </span>
-                    )}
+                    {/* AI Threat / Severity Badge */}
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full font-label-md text-label-md font-semibold text-[11px] flex items-center gap-1 ${
+                        (p.aiSeverity ?? 75) >= 75
+                          ? 'bg-error-container text-on-error-container'
+                          : (p.aiSeverity ?? 75) >= 40
+                          ? 'bg-amber-500/15 text-amber-800 dark:text-amber-200'
+                          : 'bg-primary/10 text-primary'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[12px]">bolt</span>
+                      AI Threat Index: {p.aiSeverity ?? (p.status === 'SUBMITTED' ? 85 : 45)}/100
+                    </span>
+
                     <span className="px-2.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-md text-label-md text-[11px]">
                       {p.category.replace(/_/g, ' ')}
                     </span>
@@ -214,6 +273,39 @@ const AdminDashboard: React.FC = () => {
                   <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed mb-space-md">
                     {p.description}
                   </p>
+
+                  {/* Attached Ground Evidence (Photos & Videos) */}
+                  {p.mediaUrls && p.mediaUrls.length > 0 && (
+                    <div className="mt-space-md pt-space-sm border-t border-outline-variant/20">
+                      <p className="font-label-caps text-label-caps text-on-surface-variant uppercase text-[10px] mb-2">
+                        Attached Telemetry Evidence ({p.mediaUrls.length} Files)
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-space-xs">
+                        {p.mediaUrls.map((url: string, idx: number) => {
+                          const isVid = /\.(mp4|mov|webm|mkv)$/i.test(url);
+                          const fullUrl = url.startsWith('http')
+                            ? url
+                            : `https://trisetubackend-production.up.railway.app${url}`;
+
+                          return isVid ? (
+                            <div key={idx} className="rounded-xl overflow-hidden bg-black aspect-video border border-outline-variant/30">
+                              <video src={fullUrl} controls className="w-full h-full object-contain" />
+                            </div>
+                          ) : (
+                            <a
+                              key={idx}
+                              href={fullUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block rounded-xl overflow-hidden aspect-video bg-surface-container border border-outline-variant/30 hover:opacity-90 transition-opacity"
+                            >
+                              <img src={fullUrl} alt="Evidence" className="w-full h-full object-cover" />
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}

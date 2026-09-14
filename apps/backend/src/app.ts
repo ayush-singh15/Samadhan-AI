@@ -1,6 +1,7 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.config';
@@ -19,8 +20,11 @@ import eventsRoutes from './modules/events/events.routes';
 
 const app: Application = express();
 
-// Middlewares
-app.use(helmet());
+// Security Middlewares
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allows uploaded images/videos to be viewed from web frontend
+}));
+
 app.use(cors({
   origin: [
     'https://trisetu.vercel.app',
@@ -31,6 +35,27 @@ app.use(cors({
   ].filter(Boolean),
   credentials: true,
 }));
+
+// Rate Limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests from this IP. Please try again later.' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30, // 30 requests per 15 min for auth/OTP endpoints
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many authentication attempts. Please try again after 15 minutes.' },
+});
+
+app.use(generalLimiter);
+app.use('/api/v1/auth', authLimiter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

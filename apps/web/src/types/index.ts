@@ -65,6 +65,8 @@ export interface Problem {
   // AI-added fields (from AI service, not in Prisma yet)
   aiCategory?: string;
   aiConfidence?: number;
+  aiSeverity?: number;
+  technicalDomains?: string[];
   similarProblems?: SimilarProblem[];
 }
 
