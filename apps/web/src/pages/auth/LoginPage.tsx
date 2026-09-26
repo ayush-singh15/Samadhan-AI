@@ -27,15 +27,12 @@ const LoginPage: React.FC = () => {
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? null;
 
-  // Tabs: 'otp' | 'demo' | 'password'
-  const [activeTab, setActiveTab] = useState<'otp' | 'demo' | 'password'>('otp');
+  // Tabs: 'phone' | 'demo' | 'password'
+  const [activeTab, setActiveTab] = useState<'phone' | 'demo' | 'password'>('phone');
 
-  // OTP State
+  // Phone Login State
   const [fullName, setFullName] = useState('');
-  const [identifier, setIdentifier] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [countdown, setCountdown] = useState(0);
+  const [phone, setPhone] = useState('');
 
   // Password Login State
   const [email, setEmail] = useState('');
@@ -47,46 +44,22 @@ const LoginPage: React.FC = () => {
 
   const redirect = (role: UserRole) => navigate(from ?? ROLE_HOME[role], { replace: true });
 
-  // Countdown timer effect
-  React.useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
-
-  // Request OTP
-  const handleSendOtp = async (e: React.FormEvent) => {
+  // Direct Phone Login
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier.trim() || identifier.trim().length < 4) {
-      setError('Please enter a valid 10-digit mobile number or email.');
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      setError('Please enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+    if (!fullName.trim()) {
+      setError('Please enter your full name so we can personalize your dashboard.');
       return;
     }
     setError(null);
     setLoading(true);
     try {
-      const res = await authApi.sendOtp(identifier.trim(), 'CITIZEN', fullName.trim());
-      setOtpSent(true);
-      setSuccessMsg(res.message);
-      setCountdown(60); // 60s cooldown
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Verify OTP
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otp.trim() || otp.trim().length !== 6) {
-      setError('Please enter the 6-digit verification code received.');
-      return;
-    }
-    setError(null);
-    setLoading(true);
-    try {
-      const { user, token } = await authApi.verifyOtp(identifier.trim(), otp.trim(), fullName.trim());
+      const { user, token } = await authApi.phoneLogin(cleanPhone, fullName.trim(), 'CITIZEN');
       setUser(user, token);
       redirect((user.role as UserRole) || 'CITIZEN');
     } catch (err) {
@@ -163,15 +136,15 @@ const LoginPage: React.FC = () => {
           {/* Mode Switcher Tabs */}
           <div className="flex bg-surface-container-low p-1.5 rounded-2xl mb-space-lg border border-outline-variant/30">
             <button
-              onClick={() => { setActiveTab('otp'); setError(null); }}
+              onClick={() => { setActiveTab('phone'); setError(null); }}
               className={`flex-1 py-2.5 rounded-xl font-label-lg transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'otp'
+                activeTab === 'phone'
                   ? 'bg-surface-container-lowest text-primary shadow-sm font-semibold'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">sms</span>
-              OTP Login
+              <span className="material-symbols-outlined text-[18px]">phone_android</span>
+              Mobile Login
             </button>
             <button
               onClick={() => { setActiveTab('demo'); setError(null); }}
@@ -213,123 +186,64 @@ const LoginPage: React.FC = () => {
             </div>
           )}
 
-          {/* ─── TAB 1: OTP AUTHENTICATION ────────────────────────── */}
-          {activeTab === 'otp' && (
+          {/* ─── TAB 1: DIRECT MOBILE LOGIN ────────────────────────── */}
+          {activeTab === 'phone' && (
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-space-lg shadow-sm">
-              {!otpSent ? (
-                <form onSubmit={handleSendOtp} className="flex flex-col gap-space-md">
-                  <div>
-                    <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
-                      Your Full Name
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined text-[20px]">
-                        person
-                      </span>
-                      <input
-                        type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="e.g. Ayush Singh"
-                        required
-                        className="w-full pl-11 pr-space-md py-3 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
-                      Mobile Number or Official Email
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined text-[20px]">
-                        phone_android
-                      </span>
-                      <input
-                        type="text"
-                        value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder="e.g. 9876543210 or citizen@nic.in"
-                        required
-                        className="w-full pl-11 pr-space-md py-3 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                    </div>
-                    <p className="font-body-xs text-body-xs text-on-surface-variant mt-1.5">
-                      A real 6-digit OTP will be dispatched via SMS to your mobile phone.
-                    </p>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading || !identifier.trim() || !fullName.trim()}
-                    className="w-full py-3.5 rounded-xl bg-primary text-on-primary font-headline-sm hover:bg-primary-container transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {loading && <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>}
-                    {loading ? 'Sending SMS OTP…' : 'Send 6-Digit OTP via SMS'}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyOtp} className="flex flex-col gap-space-md">
-                  <div className="p-3.5 bg-primary/10 border border-primary/20 rounded-xl text-primary text-sm flex items-center gap-2.5">
-                    <span className="material-symbols-outlined text-primary text-[22px]">sms</span>
-                    <div>
-                      <p className="font-semibold text-on-surface">SMS Verification Dispatched</p>
-                      <p className="text-xs text-on-surface-variant">
-                        Code sent to <strong>{identifier}</strong> for <strong>{fullName || 'Citizen'}</strong>. Check your phone's SMS.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="font-label-caps text-label-caps text-on-surface-variant uppercase">
-                        Enter 6-Digit Verification Code
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => { setOtpSent(false); setOtp(''); }}
-                        className="text-primary text-xs font-semibold hover:underline"
-                      >
-                        Change Number
-                      </button>
-                    </div>
+              <form onSubmit={handlePhoneSubmit} className="flex flex-col gap-space-md">
+                <div>
+                  <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
+                    Your Full Name
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined text-[20px]">
+                      person
+                    </span>
                     <input
                       type="text"
-                      maxLength={6}
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                      placeholder="• • • • • •"
-                      autoFocus
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="e.g. Ayush Singh"
                       required
-                      className="w-full text-center tracking-[0.75em] text-2xl font-mono py-3 rounded-xl border-2 border-primary bg-surface text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:ring-2 focus:ring-primary font-bold"
+                      className="w-full pl-11 pr-space-md py-3 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
+                  <p className="font-body-xs text-body-xs text-on-surface-variant mt-1.5">
+                    Your name will be personalized across your citizen dashboard and public submissions.
+                  </p>
+                </div>
 
-                  <div className="flex items-center justify-between text-xs text-on-surface-variant">
-                    <span>Sent to: <strong>{identifier}</strong></span>
-                    {countdown > 0 ? (
-                      <span className="text-on-surface-variant">Resend in {countdown}s</span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleSendOtp}
-                        className="text-primary font-semibold hover:underline"
-                      >
-                        Resend OTP
-                      </button>
-                    )}
+                <div>
+                  <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
+                    10-Digit Mobile Number
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant font-semibold text-sm">
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      placeholder="8081785547"
+                      required
+                      className="w-full pl-12 pr-space-md py-3 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary font-mono text-base tracking-wider"
+                    />
                   </div>
+                  <p className="font-body-xs text-body-xs text-on-surface-variant mt-1.5">
+                    Fast, real-time login linked directly to your mobile number.
+                  </p>
+                </div>
 
-                  <button
-                    type="submit"
-                    disabled={loading || otp.length !== 6}
-                    className="w-full py-3.5 rounded-xl bg-primary text-on-primary font-headline-sm hover:bg-primary-container transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {loading && <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>}
-                    {loading ? 'Verifying OTP…' : 'Verify & Enter Portal'}
-                  </button>
-                </form>
-              )}
+                <button
+                  type="submit"
+                  disabled={loading || phone.replace(/\D/g, '').length < 10 || !fullName.trim()}
+                  className="w-full py-3.5 rounded-xl bg-primary text-on-primary font-headline-sm hover:bg-primary-container transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {loading && <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>}
+                  {loading ? 'Entering Portal…' : 'Enter Citizen Portal'}
+                </button>
+              </form>
             </div>
           )}
 

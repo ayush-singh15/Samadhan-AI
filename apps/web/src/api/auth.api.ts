@@ -60,6 +60,13 @@ export const authApi = {
     return data.data;
   },
 
+  /** POST /api/v1/auth/phone-login */
+  async phoneLogin(phone: string, name?: string, role?: string): Promise<{ user: User; token: string; isNewUser: boolean }> {
+    const { data } = await api.post<ApiEnvelope<{ user: User; token: string; isNewUser: boolean }>>('/auth/phone-login', { phone, name, role });
+    if (!data.success) throw new Error(data.message);
+    return data.data;
+  },
+
   /** POST /api/v1/auth/send-otp */
   async sendOtp(identifier: string, role?: string, name?: string): Promise<SendOtpResult> {
     const { data } = await api.post<ApiEnvelope<SendOtpResult>>('/auth/send-otp', { identifier, role, name });

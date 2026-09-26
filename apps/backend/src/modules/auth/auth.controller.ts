@@ -56,6 +56,19 @@ export class AuthController {
     }
   }
 
+  async phoneLogin(req: Request, res: Response) {
+    try {
+      const { phone, name, role } = req.body;
+      if (!phone || typeof phone !== 'string' || phone.trim().length < 10) {
+        return sendResponse(res, 400, false, 'Please enter a valid 10-digit Indian mobile number.');
+      }
+      const result = await authService.phoneLogin({ phone: phone.trim(), name: name?.trim(), role });
+      return sendResponse(res, 200, true, 'Logged in successfully.', result);
+    } catch (err: any) {
+      return sendResponse(res, 400, false, err.message);
+    }
+  }
+
   async me(req: Request, res: Response) {
     try {
       const userId = (req as any).user?.id;
