@@ -1,10 +1,10 @@
-﻿# Samadhan AI (समाधान AI) 🇮🇳
+# Samadhan AI (समाधान AI) 🇮🇳
 
 > **Digital Public Infrastructure for Quad-Helix Civic Action**
 > Powered by Autonomous AI Matching, Real-Time Cryptographic Ledger, and MCA-Compliant CSR Escrow Disbursement.
 
 [![CI Pipeline](https://github.com/ayush-singh15/Samadhan-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/ayush-singh15/Samadhan-AI/actions)
-[![Live Frontend](https://img.shields.io/badge/Vercel-Production%20Live-brightgreen)](https://trisetu.vercel.app)
+[![Live Frontend](https://img.shields.io/badge/Vercel-Production%20Live-brightgreen)](https://samadhan-i.vercel.app)
 [![Live Backend](https://img.shields.io/badge/Railway-API%20Live-blue)](https://trisetubackend-production.up.railway.app/api-docs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Author](https://img.shields.io/badge/Sole%20Author-Ayush%20Singh%20(ayush--singh15)-darkblue)](https://github.com/ayush-singh15)
@@ -26,7 +26,7 @@
 
 | Component | Cloud Platform | Live URL | Status |
 | :--- | :--- | :--- | :--- |
-| **Web Application** | Vercel | [https://trisetu.vercel.app](https://trisetu.vercel.app) | 🟢 Live & Operational |
+| **Web Application** | Vercel | [https://samadhan-i.vercel.app](https://samadhan-i.vercel.app) | 🟢 Live & Operational |
 | **Backend API Engine** | Railway | [https://trisetubackend-production.up.railway.app/api/v1](https://trisetubackend-production.up.railway.app/api/v1) | 🟢 Live & Operational |
 | **Interactive API Docs** | Swagger UI | [https://trisetubackend-production.up.railway.app/api-docs](https://trisetubackend-production.up.railway.app/api-docs) | 🟢 Live & Operational |
 | **Cloud Database** | Neon Serverless PostgreSQL | High-availability cluster (AWS ap-southeast-1) | 🟢 Healthy |
