@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
 import { problemsService } from './problems.service';
 import { sendResponse } from '../../utils/response';
+import { uploadFileToCloud } from '../../middlewares/upload.middleware';
 
 export class ProblemsController {
   async getAllProblems(req: Request, res: Response) {
@@ -44,7 +45,11 @@ export class ProblemsController {
       if (!userId) return sendResponse(res, 401, false, 'Unauthorized');
 
       const uploadedFiles = req.files ? (req.files as Express.Multer.File[]) : [];
-      const fileUrls = uploadedFiles.map((f) => `/uploads/${f.filename}`);
+
+      // Upload each file to Cloudinary (or local disk if not configured)
+      const fileUrls = await Promise.all(
+        uploadedFiles.map((file) => uploadFileToCloud(file))
+      );
 
       let existingMedia: string[] = [];
       if (req.body.mediaUrls) {

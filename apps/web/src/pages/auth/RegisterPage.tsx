@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth.api';
 import { useAuth } from '../../context/AuthContext';
+import { BrandLogo } from '../../components/ui/BrandLogo';
 import type { UserRole } from '../../types';
 
-const ROLES: { value: UserRole; label: string; description: string }[] = [
-  { value: 'CITIZEN',    label: 'Citizen',             description: 'Report local problems' },
-  { value: 'UNIVERSITY', label: 'University / College', description: 'Submit solutions & track projects' },
-  { value: 'INDUSTRY',   label: 'Industry / CSR',       description: 'Fund and support projects' },
+const ROLES: { value: UserRole; label: string; description: string; icon: string }[] = [
+  { value: 'CITIZEN',    label: 'Citizen',             description: 'Report & track local civic problems',       icon: 'person' },
+  { value: 'UNIVERSITY', label: 'University / College', description: 'Submit research proposals & track projects', icon: 'school' },
+  { value: 'INDUSTRY',   label: 'Industry / CSR',       description: 'Fund and support civic innovation projects', icon: 'business' },
 ];
 
 function getErrorMessage(err: unknown): string {
@@ -19,15 +20,31 @@ const RegisterPage: React.FC = () => {
   const { setUser } = useAuth();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ name: '', email: '', role: 'CITIZEN' as UserRole });
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'CITIZEN' as UserRole,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const isValid = form.name.trim().length > 1 && form.email.includes('@') && !!form.role;
+  const isValid =
+    form.name.trim().length > 1 &&
+    form.email.includes('@') &&
+    form.password.length >= 8 &&
+    form.password === form.confirmPassword &&
+    !!form.role;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
@@ -35,6 +52,7 @@ const RegisterPage: React.FC = () => {
         name: form.name.trim(),
         email: form.email.trim(),
         role: form.role,
+        password: form.password,
       });
       setUser(user, token);
       switch (user.role) {
@@ -59,123 +77,218 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div style={s.page}>
-      <div style={s.card}>
-        <div style={s.logoRow}>
-          <span style={s.tri}>Tri</span><span style={s.setu}>Setu</span>
+    <div className="min-h-screen bg-surface font-body-md flex flex-col">
+
+      {/* Minimal nav */}
+      <header className="h-16 px-margin-mobile md:px-margin-desktop flex items-center justify-between border-b border-outline-variant/30 bg-surface-container-lowest/80 backdrop-blur-md">
+        <Link to="/" className="flex items-center gap-space-sm">
+          <BrandLogo size="md" />
+        </Link>
+        <div className="flex items-center gap-space-sm">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-primary border border-primary/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            Live National Mesh
+          </span>
         </div>
-        <h1 style={s.heading}>Create account</h1>
-        <p style={s.sub}>Join the Societal Innovation Collaboration Platform</p>
-        <hr style={s.divider} />
+      </header>
 
-        <form onSubmit={handleSubmit} noValidate>
-          {/* Name */}
-          <div style={s.field}>
-            <label htmlFor="reg-name" style={s.label}>Full name <span style={s.req}>*</span></label>
-            <input
-              id="reg-name"
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="Your full name"
-              required
-              disabled={loading}
-              style={s.input}
-            />
-          </div>
+      <main className="flex-1 flex items-center justify-center px-margin-mobile py-space-2xl">
+        <div className="w-full max-w-lg">
 
-          {/* Email */}
-          <div style={s.field}>
-            <label htmlFor="reg-email" style={s.label}>Email address <span style={s.req}>*</span></label>
-            <input
-              id="reg-email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              placeholder="you@institution.ac.in"
-              required
-              autoComplete="email"
-              disabled={loading}
-              style={s.input}
-            />
-          </div>
-
-          {/* Role */}
-          <div style={s.field}>
-            <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-              <legend style={s.label}>I am registering as <span style={s.req}>*</span></legend>
-              <div style={s.roleList}>
-                {ROLES.map((r) => (
-                  <label
-                    key={r.value}
-                    style={{
-                      ...s.roleOption,
-                      borderColor: form.role === r.value ? '#1d4ed8' : '#d1d5db',
-                      background: form.role === r.value ? '#eff6ff' : '#fff',
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="role"
-                      value={r.value}
-                      checked={form.role === r.value}
-                      onChange={() => setForm((f) => ({ ...f, role: r.value }))}
-                      disabled={loading}
-                      style={{ marginRight: '0.625rem', flexShrink: 0 }}
-                    />
-                    <span>
-                      <strong style={{ fontSize: '0.875rem', color: '#111827' }}>{r.label}</strong>
-                      <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>{r.description}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            <p style={s.roleNote}>
-              Government / Admin accounts are created by the platform administrator.
+          {/* Heading */}
+          <div className="text-center mb-space-lg">
+            <p className="font-label-caps text-label-caps text-primary uppercase tracking-wider mb-space-xs">
+              National Civic Infrastructure
+            </p>
+            <h1 className="font-headline-xl text-headline-xl text-on-surface font-bold">
+              Join Samadhan AI
+            </h1>
+            <p className="font-body-md text-body-md text-on-surface-variant mt-space-xs">
+              Create your account and connect to the National Civic Innovation Mesh.
             </p>
           </div>
 
-          {error && <p role="alert" style={s.error}>{error}</p>}
+          {/* Error */}
+          {error && (
+            <div className="mb-space-md p-space-sm rounded-lg bg-error-container text-on-error-container font-body-sm text-body-sm flex items-center gap-space-xs">
+              <span className="material-symbols-outlined text-error text-[18px]">error</span>
+              {error}
+            </div>
+          )}
 
-          <button
-            type="submit"
-            disabled={loading || !isValid}
-            style={{ ...s.btn, opacity: loading || !isValid ? 0.55 : 1, cursor: loading || !isValid ? 'not-allowed' : 'pointer' }}
-          >
-            {loading ? 'Creating account…' : 'Create Account'}
-          </button>
-        </form>
+          {/* Form Card */}
+          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-space-lg shadow-sm">
+            <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-space-md">
 
-        <p style={s.foot}>
-          Already have an account?{' '}
-          <Link to="/login" style={s.link}>Sign in</Link>
-        </p>
-      </div>
+              {/* Full Name */}
+              <div>
+                <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
+                  Full Name <span className="text-error">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined text-[20px]">
+                    person
+                  </span>
+                  <input
+                    id="reg-name"
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Your full name"
+                    required
+                    disabled={loading}
+                    className="w-full pl-11 pr-space-md py-3 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
+                  Email Address <span className="text-error">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined text-[20px]">
+                    mail
+                  </span>
+                  <input
+                    id="reg-email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                    placeholder="you@institution.ac.in"
+                    required
+                    autoComplete="email"
+                    disabled={loading}
+                    className="w-full pl-11 pr-space-md py-3 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
+                  Password <span className="text-error">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined text-[20px]">
+                    lock
+                  </span>
+                  <input
+                    id="reg-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    placeholder="Min 8 characters"
+                    required
+                    disabled={loading}
+                    className="w-full pl-11 pr-11 py-3 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
+                    tabIndex={-1}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+                {form.password && form.password.length < 8 && (
+                  <p className="font-body-xs text-body-xs text-error mt-1.5">Password must be at least 8 characters.</p>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
+                  Confirm Password <span className="text-error">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined text-[20px]">
+                    lock_reset
+                  </span>
+                  <input
+                    id="reg-confirm-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.confirmPassword}
+                    onChange={(e) => setForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+                    placeholder="Re-enter password"
+                    required
+                    disabled={loading}
+                    className="w-full pl-11 pr-space-md py-3 rounded-xl border border-outline-variant bg-surface font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+                  />
+                </div>
+                {form.confirmPassword && form.password !== form.confirmPassword && (
+                  <p className="font-body-xs text-body-xs text-error mt-1.5">Passwords do not match.</p>
+                )}
+              </div>
+
+              {/* Role Selection */}
+              <div>
+                <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">
+                  I am registering as <span className="text-error">*</span>
+                </label>
+                <div className="flex flex-col gap-space-xs">
+                  {ROLES.map((r) => (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => !loading && setForm((f) => ({ ...f, role: r.value }))}
+                      disabled={loading}
+                      className={`flex items-center gap-space-md px-space-md py-3 rounded-xl border-2 transition-all text-left ${
+                        form.role === r.value
+                          ? 'border-primary bg-primary/5 shadow-sm'
+                          : 'border-outline-variant/40 hover:border-primary/50 hover:bg-surface-container-low'
+                      } disabled:opacity-60`}
+                    >
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                        form.role === r.value ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'
+                      }`}>
+                        <span className="material-symbols-outlined text-[20px]">{r.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className={`font-label-lg text-label-lg font-semibold ${form.role === r.value ? 'text-primary' : 'text-on-surface'}`}>
+                          {r.label}
+                        </p>
+                        <p className="font-body-sm text-body-sm text-on-surface-variant text-[12px]">{r.description}</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        form.role === r.value ? 'border-primary' : 'border-outline-variant'
+                      }`}>
+                        {form.role === r.value && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <p className="font-body-xs text-body-xs text-on-surface-variant mt-space-xs">
+                  Government / Admin accounts are provisioned by the platform administrator.
+                </p>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading || !isValid}
+                className="w-full py-3.5 rounded-xl bg-primary text-on-primary font-headline-sm hover:bg-primary-container transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2 mt-space-xs"
+              >
+                {loading && <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>}
+                {loading ? 'Creating Account…' : 'Create Account & Enter Portal'}
+              </button>
+            </form>
+          </div>
+
+          <p className="text-center font-body-sm text-body-sm text-on-surface-variant mt-space-md">
+            Already have an account?{' '}
+            <Link to="/login" className="text-primary font-semibold hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </main>
     </div>
   );
-};
-
-const s: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#f5f5f0', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem', fontFamily: 'Inter, system-ui, sans-serif' },
-  card: { background: '#fff', border: '1px solid #d1d5db', borderTop: '4px solid #1d4ed8', borderRadius: '4px', padding: '2.5rem 2rem', width: '100%', maxWidth: '440px' },
-  logoRow: { display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' },
-  tri: { fontSize: '1.5rem', fontWeight: 800, color: '#1d4ed8', letterSpacing: '-0.03em' },
-  setu: { fontSize: '1.5rem', fontWeight: 800, color: '#111827', letterSpacing: '-0.03em' },
-  heading: { fontSize: '1.125rem', fontWeight: 700, textAlign: 'center', color: '#111827', margin: '0 0 0.25rem', letterSpacing: '-0.01em' },
-  sub: { fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center', margin: '0 0 1.25rem' },
-  divider: { border: 'none', borderTop: '1px solid #e5e7eb', margin: '0 0 1.5rem' },
-  field: { marginBottom: '1.25rem' },
-  label: { display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: '0.375rem' },
-  req: { color: '#b91c1c' },
-  input: { display: 'block', width: '100%', boxSizing: 'border-box', padding: '0.625rem 0.875rem', border: '1px solid #d1d5db', borderRadius: '3px', fontSize: '0.9375rem', color: '#111827', background: '#fafaf9', outline: 'none', fontFamily: 'inherit' },
-  roleList: { display: 'flex', flexDirection: 'column', gap: '0.5rem' },
-  roleOption: { display: 'flex', alignItems: 'flex-start', padding: '0.75rem', border: '1.5px solid', borderRadius: '3px', cursor: 'pointer' },
-  roleNote: { fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem' },
-  btn: { display: 'block', width: '100%', padding: '0.7rem', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: '3px', fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1.25rem', fontFamily: 'inherit' },
-  error: { fontSize: '0.8125rem', color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '3px', padding: '0.5rem 0.75rem', marginBottom: '0.75rem' },
-  foot: { fontSize: '0.875rem', color: '#6b7280', textAlign: 'center', margin: 0 },
-  link: { color: '#1d4ed8', textDecoration: 'underline', fontWeight: 500 },
 };
 
 export default RegisterPage;

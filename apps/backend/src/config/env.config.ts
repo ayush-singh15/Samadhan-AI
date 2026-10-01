@@ -13,4 +13,8 @@ export const env = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://localhost:8000',
   UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
+  // Cloudinary — cloud storage for images & videos (survives Railway deploys)
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
 };
